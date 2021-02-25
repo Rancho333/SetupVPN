@@ -74,7 +74,7 @@ Object.defineProperty(exports, "__esModule", {
 	value: true
 });
 
-var _folders = __webpack_require__(15);
+var _folders = __webpack_require__(14);
 
 var _folders2 = _interopRequireDefault(_folders);
 
@@ -124,6 +124,7 @@ exports.default = {
 		ID: _platform2.default.WebRTCAddon.id
 	},
 	PROXYADDONS: _platform2.default.proxyAddons,
+	EXCEPTIONADDONS: _platform2.default.exceptionAddons,
 	STORAGEKEYS: {
 		BASELINK: "baselink",
 		LASTBASELINK: "lastBaselink",
@@ -163,7 +164,13 @@ exports.default = {
 		TEASERNEXT: 'teaserNext',
 		VERSIONSTATUSNEXTUPDATE: 'versionStatusNextTime',
 		VERSIONSTATUS: 'versionStatus',
-		LOGINTYPE: 'logintype'
+		LOGINTYPE: 'logintype',
+		LSER: 'localeLser',
+		COUNTRYLOCALE: 'countryLocale',
+		CONFIGHARDTTL: 'configHardTTL',
+		LASTLOGOUTREASON: 'lastLogoutReason',
+		COUNTRYSESSIONSTATE: 'countrySessionState',
+		LASTFAILEDSERVER: 'lastFailedServer'
 	},
 	STATUS: {
 		BLOCKED: "BLOCKED",
@@ -195,9 +202,11 @@ Object.defineProperty(exports, "__esModule", {
 	value: true
 });
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _constants = __webpack_require__(9);
+var _constants = __webpack_require__(5);
 
 var _constants2 = _interopRequireDefault(_constants);
 
@@ -205,7 +214,7 @@ var _ServiceMeta = __webpack_require__(0);
 
 var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
 
-var _folders = __webpack_require__(15);
+var _folders = __webpack_require__(14);
 
 var _folders2 = _interopRequireDefault(_folders);
 
@@ -261,9 +270,32 @@ var Utils = function () {
 			return template;
 		}
 	}, {
+		key: 'isObject',
+		value: function isObject(obj) {
+			return (typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) === 'object' && obj !== null;
+		}
+	}, {
+		key: 'isString',
+		value: function isString(x) {
+			return Object.prototype.toString.call(x) === "[object String]";
+		}
+	}, {
+		key: 'getFallbackLocale',
+		value: function getFallbackLocale(key, locale, fallback) {
+			if (this.isObject(locale) && locale.hasOwnProperty(key) && this.isString(locale[key])) return locale[key];
+			if (this.isObject(fallback) && fallback.hasOwnProperty(key) && this.isString(fallback[key])) return fallback[key];
+			return "Undefined locale";
+		}
+	}, {
 		key: 'getConfigTTL',
-		value: function getConfigTTL() {
-			return Math.floor(Date.now() / 1000) + 5 * 60;
+		value: function getConfigTTL(config_interval, default_interval) {
+			var min = 5;
+			var max = 120;
+			var interval = default_interval;
+			if (config_interval && Number.isInteger(config_interval)) {
+				interval = Math.min(Math.max(min, config_interval), max);
+			}
+			return Math.floor(Date.now() / 1000) + interval * 60;
 		}
 	}, {
 		key: 'getLocaleInStorage',
@@ -279,7 +311,7 @@ var Utils = function () {
 	}, {
 		key: 'isUserPremium',
 		value: function isUserPremium(serverData) {
-			if (serverData.premium == 0) {
+			if (serverData["user_premium"] == 0) {
 				return false;
 			} else {
 				if (!Date.now) {
@@ -290,7 +322,7 @@ var Utils = function () {
 
 				var datenow = Math.floor(Date.now() / 1000);
 				//console.log("UTC TIME" + datenow);
-				var expiredate = serverData.premium;
+				var expiredate = serverData["user_premium"];
 
 				if (expiredate > datenow) {
 					return true;
@@ -329,7 +361,8 @@ var Utils = function () {
 				var length = this.getRandomInt(6, 12);
 				var start = parseInt("1".padEnd(length, "0"));
 				var end = parseInt("9".padEnd(length, "9"));
-
+				console.log("length = ", length);
+				console.log("start=" + start + "  end=" + end);
 				randomRange.s = start;
 				randomRange.e = end;
 				return randomRange;
@@ -391,6 +424,7 @@ var Utils = function () {
 
 				var condition = inAppNoti && inAppNoti[uid] === false ? true : false;
 
+				console.log("condition", condition);
 				if (!condition) chrome.notifications.create(options);
 			});
 		}
@@ -474,15 +508,14 @@ var Utils = function () {
 		value: function getTabIdByServerType(serverType) {
 			if (!serverType) return 0;
 
-			serverType = serverType.toUpperCase();
 			switch (serverType) {
-				case "REGULAR":
+				case 0:
 					return 0;
 					break;
-				case "PREMIUM":
+				case 1:
 					return 1;
 					break;
-				case "PUBLIC":
+				case 2:
 					return 2;
 					break;
 			}
@@ -631,6 +664,132 @@ var Utils = function () {
 			var updateAvalHtml = '\n\t\t\t\t<div class="update-available" id="update-app">\n\t\t\t\t\t<div class="update-available__title"><span class="update-available__notification">1</span> NEW UPDATE AVAILABLE</div>\n\t\t\t\t\t<div class="update-available__content">\n\t\t\t\t\t\t<div class="update-available__content__app">\n\t\t\t\t\t\t\t<div class="update-available__content__app__icon">\n\t\t\t\t\t\t\t\t<img src="images/symbol25.png">\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t<div class="update-available__content__app__version-info">\n\t\t\t\t\t\t\t\t<div style="color: red;">Your version: ' + yourVersion + '</div>\n\t\t\t\t\t\t\t\t<div style="color: #007aff;">New version: ' + curVersion + '</div>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t<div class="update-available__content__app__update">\n\t\t\t\t\t\t\t\t<div class="btn--update">UPDATE</div>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t';
 			return updateAvalHtml;
 		}
+	}, {
+		key: 'isValidResponse',
+		value: function isValidResponse(response) {
+			return response && (typeof response === 'undefined' ? 'undefined' : _typeof(response)) === 'object' && response !== null && response.hasOwnProperty("retcode");
+		}
+	}, {
+		key: 'isResponseMinus20',
+		value: function isResponseMinus20(response) {
+			return this.isValidResponse(response) && response.retcode === -20;
+		}
+	}, {
+		key: 'isResponse200',
+		value: function isResponse200(response) {
+			return this.isValidResponse(response) && response.retcode === 200;
+		}
+	}, {
+		key: 'isResponseMinusOne',
+		value: function isResponseMinusOne(response) {
+			return this.isValidResponse(response) && response.retcode === -1;
+		}
+	}, {
+		key: 'isResponseAuthError',
+		value: function isResponseAuthError(response) {
+			return this.isValidResponse(response) && response.retcode === -4;
+		}
+	}, {
+		key: 'isMaintenanceMode',
+		value: function isMaintenanceMode(response) {
+			return this.isValidResponse(response) && response.retcode === -500;
+		}
+	}, {
+		key: 'showMinusOneError',
+		value: function showMinusOneError(showErrorFunc) {
+			if (this.isFunction(showErrorFunc)) showErrorFunc("Something went wrong. Please try later again.");
+		}
+	}, {
+		key: 'isFunction',
+		value: function isFunction(functionToCheck) {
+			return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
+		}
+	}, {
+		key: 'getOS',
+		value: function getOS() {
+			return new Promise(function (resolve) {
+				try {
+					if (chrome && chrome.runtime && Utils.isFunction(chrome.runtime.getPlatformInfo)) {
+						chrome.runtime.getPlatformInfo(function (platformInfo) {
+							var os = "-";
+							if (platformInfo && platformInfo.os && typeof platformInfo.os == 'string') {
+								os = platformInfo.os.toLowerCase();
+							}
+							resolve(os);
+						});
+					} else {
+						resolve("-");
+					}
+				} catch (e) {
+					resolve("-");
+				}
+			});
+		}
+	}, {
+		key: 'b64_to_utf8',
+		value: function b64_to_utf8(str) {
+			return decodeURIComponent(escape(atob(str)));
+		}
+	}, {
+		key: 'loadLocaleFromServer',
+		value: function loadLocaleFromServer(loadingScreen, errorScreen, maintenanceFunc, background, source, jquery) {
+			var _this = this;
+			loadingScreen.append('<div class="loadingimg"><img src="images/loading.gif"></div>');
+			background.request("api", "getLocale", {}).then(function (response) {
+				if (_this.isResponse200(response)) {
+					window.location.reload(true);
+				}
+
+				function showLocaleError(error_msg) {
+					var msg = "<p style='text-align:center; padding: 10px 10xp;'>" + error_msg + " / " + source + "</p>";
+					errorScreen.css("display", "block");
+					errorScreen.html(msg);
+				}
+
+				if (_this.isResponseMinus20(response)) return showLocaleError(response.message);
+
+				if (_this.isResponseMinusOne(response)) {
+					return _this.showMinusOneError(showLocaleError);
+				}
+
+				if (_this.isMaintenanceMode(response)) {
+					var maintenance = '<div style="display: block;" id="maintenance-mode" class="maintenance-mode">' + '<i class="material-icons maintenance-mode__close" id="maintenance-mode-close-icon">close</i>' + '<div class="maintenance-mode__container">' + '<div class="maintenance-mode__icon"><i class="material-icons">build</i></div>' + '<div id="maintenance-msg" class="maintenance-mode__message">' + '</div>' + '</div>' + '</div>';
+					errorScreen.html(maintenance);
+					jquery('#maintenance-msg').text(response.message);
+					jquery('#maintenance-mode-close-icon').click(function () {
+						location.reload();
+					});
+					jquery('#upgrade-mode').css('display', 'none');
+					jquery('#dashboard-view-mode').css('display', 'block');
+					jquery('#header-container').css('display', 'none');
+					//maintenanceFunc(response.message);
+				}
+			});
+		}
+	}, {
+		key: 'loadCountryLocale',
+		value: function loadCountryLocale(background) {
+			var _this = this;
+			return new Promise(function (resolve, reject) {
+				chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.COUNTRYLOCALE, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE], function (storage) {
+					var countryLocale = storage[_ServiceMeta2.default.STORAGEKEYS.COUNTRYLOCALE];
+					if (countryLocale && _this.isObject(countryLocale)) {
+						resolve(countryLocale);
+						return;
+					}
+
+					var lang = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+					background.request("api", "getCountryLocale", { langCode: lang }).then(function (cachedCountryLocale) {
+						console.log("cachedCountryLocale from bg", cachedCountryLocale);
+						if (cachedCountryLocale && _this.isObject(cachedCountryLocale)) {
+							resolve(cachedCountryLocale);
+							return;
+						}
+						resolve({});
+					});
+				});
+			});
+		}
 	}]);
 
 	return Utils;
@@ -640,6 +799,939 @@ exports.default = new Utils();
 
 /***/ }),
 /* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _ServiceMeta = __webpack_require__(0);
+
+var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
+
+var _endpoints = __webpack_require__(9);
+
+var _endpoints2 = _interopRequireDefault(_endpoints);
+
+var _Utils = __webpack_require__(1);
+
+var _Utils2 = _interopRequireDefault(_Utils);
+
+var _BaseFinder = __webpack_require__(15);
+
+var _BaseFinder2 = _interopRequireDefault(_BaseFinder);
+
+var _TokenWatcher = __webpack_require__(6);
+
+var _TokenWatcher2 = _interopRequireDefault(_TokenWatcher);
+
+var _constants = __webpack_require__(5);
+
+var _constants2 = _interopRequireDefault(_constants);
+
+var _folders = __webpack_require__(14);
+
+var _folders2 = _interopRequireDefault(_folders);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var shajs = __webpack_require__(28);
+
+var Api = function () {
+	function Api() {
+		_classCallCheck(this, Api);
+	}
+
+	// Responses: 200, -1, -500, -20
+
+
+	_createClass(Api, [{
+		key: 'getLanguage',
+		value: function getLanguage(callback) {
+			var _this = this;
+
+			chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+				var parameter = Object.assign({
+					os: platformInfo && platformInfo.os ? platformInfo.os : "-"
+				}, _this.metaData());
+
+				_this.request(_endpoints2.default.LANGUAGELIST, 'POST', parameter, function (response) {
+					if (_Utils2.default.isResponse200(response)) {
+						callback(response);
+					} else {
+						if (_Utils2.default.isResponse200(response) || _Utils2.default.isResponseMinusOne(response) || _Utils2.default.isMaintenanceMode(response) || _Utils2.default.isResponseMinus20(response)) {
+							if (callback) callback(response);
+						} else {
+
+							chrome.storage.local.get(function (storage) {
+								var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+								_this.findNewBase(Baselink);
+							});
+						}
+					}
+				}, false, true);
+			});
+		}
+		// Responses: 200, -1, -500, -20
+
+	}, {
+		key: 'getLocale',
+		value: function getLocale(callback, data) {
+			var _this = this;
+			chrome.storage.local.get(_ServiceMeta2.default.STORAGEKEYS.LANGUAGE, function (storage) {
+				chrome.runtime.getPlatformInfo(function (platformInfo) {
+					var lang = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+					var parameter = Object.assign({
+						os: platformInfo && platformInfo.os ? platformInfo.os : "-",
+						lang: lang
+					}, _this.metaData());
+
+					_this.request(_endpoints2.default.GETLOCALE, 'POST', parameter, function (response) {
+						// We do check here also type of translation since we need to make sure we store a valid
+						if (_Utils2.default.isResponse200(response) && _typeof(response.translation) === 'object' && response.translation !== null) {
+							var _chrome$storage$local;
+
+							chrome.storage.local.set((_chrome$storage$local = {}, _defineProperty(_chrome$storage$local, _ServiceMeta2.default.STORAGEKEYS.LOCALE, response.translation), _defineProperty(_chrome$storage$local, _ServiceMeta2.default.STORAGEKEYS.LSER, Number.isInteger(response.serial) ? response.serial : 0), _chrome$storage$local), function () {
+								console.log("setting", response.translation);
+							});
+							_this.getCountryLocale({ langCode: lang }, function () {
+								callback(response);
+							});
+						} else {
+							if (_Utils2.default.isResponseMinusOne(response) || _Utils2.default.isMaintenanceMode(response) || _Utils2.default.isResponseMinus20(response)) {
+								if (callback) callback(response);
+							} else {
+
+								if (data && data.ignoreFail === true) return callback();
+
+								chrome.storage.local.get(function (storage) {
+									var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+									_this.findNewBase(Baselink);
+								});
+							}
+						}
+					}, false, true);
+				});
+			});
+		}
+	}, {
+		key: 'getCountryLocale',
+		value: function getCountryLocale(data, callback) {
+			var _this = this;
+
+			_this.loadCountryLocaleJsonFile(data.langCode).then(function (countryLocale) {
+				console.log("getCountryLocale", countryLocale);
+				if (countryLocale) {
+					chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.COUNTRYLOCALE, countryLocale), function () {
+						if (callback) callback(countryLocale);
+					});
+				} else {
+					// Fallback to english if there is no locale for selected language code
+					_this.loadCountryLocaleJsonFile("en").then(function (countryLocale) {
+						chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.COUNTRYLOCALE, countryLocale), function () {
+							if (callback) callback(countryLocale);
+						});
+					});
+				}
+			});
+		}
+	}, {
+		key: 'loadCountryLocaleJsonFile',
+		value: function loadCountryLocaleJsonFile(langCode) {
+			return new Promise(function (resolve, reject) {
+				var xhr = new XMLHttpRequest();
+				var localeFile = _folders2.default.LOCALE + "/" + langCode + ".json";
+				xhr.open("GET", localeFile, true);
+				xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+				xhr.timeout = 5000;
+				xhr.onreadystatechange = function () {
+					if (xhr.readyState == 4) {
+						if (xhr.status == 200) {
+							var response = xhr.responseText;
+							var localeJson = false;
+							try {
+								localeJson = JSON.parse(response);
+							} catch (e) {
+								//_this.notFound();
+							}
+
+							resolve(localeJson);
+						} else {
+							resolve(false);
+						}
+					}
+				};
+				xhr.send();
+			});
+		}
+
+		// 200, -1, -50, -20, -4 ==> Supports: Authcode / email&hpassword
+
+	}, {
+		key: 'login',
+		value: function login(callback, data) {
+			var _this = this;
+
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.LSER], function (storage) {
+				var isIgnoreFail = data && data.isIgnoreFail === true ? true : false;
+
+				var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
+				var lang = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+				var authcode;
+				var email;
+				var hpassword;
+
+				if (data && data.userData && data.userData.authcode) {
+					authcode = data.userData.authcode;
+				}
+
+				if (data && data.userData && data.userData.email && data.userData.password) {
+					email = data.userData.email;
+					hpassword = data.userData.password;
+				}
+
+				if (!authcode && (!email || !hpassword)) {
+					return callback({
+						retcode: -4
+					});
+				}
+
+				_this.getOS().then(function (os) {
+					var parameter = Object.assign({
+						lang: lang,
+						os: os
+					}, _this.metaData());
+
+					if (authcode) {
+						parameter["authcode"] = authcode.toLowerCase();
+					} else {
+						parameter["login"] = email.toLowerCase();
+						parameter["hpassword"] = hpassword.toLowerCase();
+					}
+
+					_this.request(_endpoints2.default.LOGINAUTHCODE, 'POST', parameter, function (response) {
+						if (_Utils2.default.isResponse200(response) && response.config) {
+							var _dataToUpdate;
+
+							var soft = _Utils2.default.isObject(response.config.config_intervals) ? response.config.config_intervals.soft : false;
+							var hard = _Utils2.default.isObject(response.config.config_intervals) ? response.config.config_intervals.hard : false;
+							var configDataTTL = _Utils2.default.getConfigTTL(soft, 5);
+							var configHardTTL = _Utils2.default.getConfigTTL(hard, 60);
+
+							var userdata = {};
+
+							if (email && hpassword) {
+								userdata.authcode = response.config.authcode;
+							}
+
+							if (authcode) {
+								userdata.authcode = parameter["authcode"];
+							}
+
+							if (response.config.uid) userdata.uid = response.config.uid;
+
+							var dataToUpdate = (_dataToUpdate = {}, _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.USERDATA, userdata), _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, response.config), _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATATTL, configDataTTL), _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.CONFIGHARDTTL, configHardTTL), _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.LOGINTYPE, data.loginType), _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.COUNTRYSESSIONSTATE, {}), _dataToUpdate);
+
+							//Update IPLookupURL
+							if (response.config.ipcheck_url) dataToUpdate[_ServiceMeta2.default.STORAGEKEYS.IPLOOKUPURL] = response.config.ipcheck_url;
+
+							chrome.storage.local.set(dataToUpdate, function () {
+								return callback(response);
+							});
+						} else {
+
+							if (!isIgnoreFail) _TokenWatcher2.default.closeAllCallbacks();
+
+							if (_Utils2.default.isResponseAuthError(response) || _Utils2.default.isResponseMinusOne(response) || _Utils2.default.isMaintenanceMode(response) || _Utils2.default.isResponseMinus20(response)) {
+								if (callback) callback(response);
+								return;
+							} else {
+
+								if (!isIgnoreFail) {
+									chrome.storage.local.get(function (storage) {
+										var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+										_this.findNewBase(Baselink);
+									});
+								}
+							}
+
+							return callback(response);
+						}
+					}, isIgnoreFail, true);
+				});
+			});
+		}
+		// Responses: 200, -20, -1, -500
+
+	}, {
+		key: 'createAuthcode',
+		value: function createAuthcode(callback) {
+			var _this = this;
+			console.log("creating authcode");
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.LOCALE], function (storage) {
+				var baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+				var language = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+
+				if (!baselink) {
+					if (callback) callback(false);
+					return;
+				}
+
+				_this.getOS().then(function (os) {
+					var parameter = Object.assign({
+						os: os,
+						lang: language
+					}, _this.metaData());
+
+					_this.request(_endpoints2.default.CREATEAUTHCODE, 'POST', parameter, function (response) {
+						if (_Utils2.default.isResponse200(response) && response.hasOwnProperty("authcode")) {
+							var userdata = {
+								authcode: response.authcode
+							};
+							console.log("setting new userdata", userdata);
+							chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.USERDATA, userdata), function () {
+								if (callback) callback(response);
+							});
+						} else {
+							if (_Utils2.default.isResponse200(response) || _Utils2.default.isResponseMinus20(response) || _Utils2.default.isResponseMinusOne(response) || _Utils2.default.isMaintenanceMode(response)) {
+								if (callback) callback(response);
+							} else {
+
+								chrome.storage.local.get(function (storage) {
+									var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+									_this.findNewBase(Baselink);
+								});
+							}
+						}
+					}, false, true);
+				});
+			});
+		}
+	}, {
+		key: 'forgotPass',
+		value: function forgotPass(callback, data) {
+			var _this = this;
+
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE], function (storage) {
+				chrome.runtime.getPlatformInfo(function (platformInfo) {
+					var parameter = Object.assign({
+						email: data.email,
+						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
+						os: platformInfo && platformInfo.os ? platformInfo.os : "-"
+					}, _this.metaData());
+
+					_this.request(_endpoints2.default.FORGOTPASS, 'POST', parameter, callback);
+				});
+			});
+		}
+
+		// Responses: 200, -1, -500, -4, -20
+
+	}, {
+		key: 'getProducts',
+		value: function getProducts(callback, data) {
+			var _this = this;
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LANGUAGE], function (storage) {
+				var lang = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+				chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+					var parameter = Object.assign({
+						os: platformInfo && platformInfo.os ? platformInfo.os : "-",
+						lang: lang ? lang : '-'
+					}, _this.metaData(), data);
+
+					_this.request(_endpoints2.default.PRODUCTS, 'POST', parameter, function (response) {
+
+						if (_Utils2.default.isResponse200(response)) {
+							callback(response);
+						} else {
+							if (_Utils2.default.isResponse200(response) || _Utils2.default.isResponseMinusOne(response) || _Utils2.default.isResponseAuthError(response) || _Utils2.default.isMaintenanceMode(response) || _Utils2.default.isResponseMinus20(response)) {
+								if (callback) callback(response);
+							} else {
+
+								chrome.storage.local.get(function (storage) {
+									var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+									_this.findNewBase(Baselink);
+								});
+							}
+						}
+					}, false, true);
+				});
+			});
+		}
+
+		// Responses: 200, -1, -500, -4, -20
+
+	}, {
+		key: 'getPaymentLink',
+		value: function getPaymentLink(callback, data) {
+			var _this = this;
+
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA], function (storage) {
+				chrome.runtime.getPlatformInfo(function (platformInfo) {
+					var lang = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+					var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
+
+					var parameter = Object.assign({
+						productid: data.productid,
+						authcode: data.authcode,
+						os: platformInfo && platformInfo.os ? platformInfo.os : "-",
+						lang: lang ? lang : '-'
+					}, _this.metaData());
+
+					var paymentEndpoint = _endpoints2.default.REST2 + data.endpoint;
+
+					_this.request(paymentEndpoint, 'POST', parameter, function (response) {
+						if (_Utils2.default.isResponse200(response)) {
+							callback(response);
+						} else {
+							if (_Utils2.default.isResponse200(response) || _Utils2.default.isResponseMinusOne(response) || _Utils2.default.isResponseAuthError(response) || _Utils2.default.isMaintenanceMode(response) || _Utils2.default.isResponseMinus20(response)) {
+								if (callback) callback(response);
+							} else {
+
+								chrome.storage.local.get(function (storage) {
+									var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+									_this.findNewBase(Baselink);
+								});
+							}
+						}
+					}, false, true);
+				});
+			});
+		}
+	}, {
+		key: 'verifyProxy',
+		value: function verifyProxy(callback, data) {
+			var _this = this;
+			chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+				var parameter = Object.assign({
+					os: platformInfo && platformInfo.os ? platformInfo.os : "-"
+				}, _this.metaData(), data);
+
+				_this.request(_endpoints2.default.AUTOPROXY, 'POST', parameter, function (response) {
+					callback(response);
+				}, true, true);
+			});
+		}
+	}, {
+		key: 'changeProfile',
+		value: function changeProfile(callback, data) {
+			var _this = this;
+
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA], function (storage) {
+				chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+					var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
+
+					var newpassword = data.newhpassword;
+
+					var parameter = Object.assign({
+						email: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].email,
+						hpassword: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].password,
+						newhpassword: newpassword,
+						uid: userdata && userdata.uid ? userdata.uid : "",
+						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
+						os: platformInfo && platformInfo.os ? platformInfo.os : "-"
+					}, _this.metaData());
+
+					_this.request(_endpoints2.default.PROFILE, 'POST', parameter, function (response) {
+
+						// Password has changed. We need to update local storage here if response is positive from server.
+						if (newpassword && response && response.Retcode == 200) {
+
+							var updatedUserData = {
+								email: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].email,
+								password: newpassword
+							};
+
+							chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.USERDATA, updatedUserData), function () {
+								return callback(response);
+							});
+						}
+
+						return callback(response);
+					});
+				});
+			});
+		}
+	}, {
+		key: 'setNotificationState',
+		value: function setNotificationState(callback, data) {
+			var _this = this;
+
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA], function (storage) {
+
+				chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+					var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
+
+					var parameter = Object.assign({
+						email: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].email,
+						hpassword: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].password,
+						uid: userdata && userdata.uid ? userdata.uid : "",
+						state: data.state,
+						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
+						os: platformInfo && platformInfo.os ? platformInfo.os : "-"
+					}, _this.metaData());
+
+					_this.request(_endpoints2.default.NOTIFICATION, 'POST', parameter, callback);
+				});
+			});
+		}
+	}, {
+		key: 'getTicketToken',
+		value: function getTicketToken(callback, data) {
+			var _this = this;
+
+			chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+				var parameter = Object.assign({
+					data: data,
+					os: platformInfo && platformInfo.os ? platformInfo.os : "-"
+				}, _this.metaData());
+
+				_this.request(_endpoints2.default.TICKETTOKEN, 'POST', parameter, callback);
+			});
+		}
+	}, {
+		key: 'resendActivationLink',
+		value: function resendActivationLink(callback, data) {
+			var _this = this;
+
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LASTRESENDACTIVATION, _ServiceMeta2.default.STORAGEKEYS.BASELINK], function (storage) {
+				var lastResendActivation = storage[_ServiceMeta2.default.STORAGEKEYS.LASTRESENDACTIVATION];
+				var isTimeout = lastResendActivation && lastResendActivation + 300 > _Utils2.default.getDateNow() ? true : false;
+
+				if (!isTimeout) {
+					chrome.runtime.getPlatformInfo(function (platformInfo) {
+						var parameter = Object.assign({
+							email: data.email,
+							hpassword: data.password,
+							os: platformInfo && platformInfo.os ? platformInfo.os : "-"
+						}, _this.metaData());
+
+						_this.request(_endpoints2.default.RESENDACTIVATION, 'POST', parameter, function (response) {
+							chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.LASTRESENDACTIVATION, _Utils2.default.getDateNow()), function () {
+								callback(response);
+							});
+						});
+					});
+				} else {
+					callback({ isTimeout: true });
+				}
+			});
+		}
+	}, {
+		key: 'getTier',
+		value: function getTier(callback) {
+			var _this = this;
+			console.log("getting new tiers");
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.SERVERSJSON, _ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE], function (storage) {
+				var baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+				var storageServersJson = storage[_ServiceMeta2.default.STORAGEKEYS.SERVERSJSON];
+				var tierNextUpdate = storage[_ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE] ? storage[_ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE] : 0;
+				if (!baselink) {
+					console.log("no baselink, can not get tiers");
+					if (callback) callback(false);
+					return;
+				}
+
+				if (tierNextUpdate < _Utils2.default.getDateNow()) {
+					_this.getOS().then(function (os) {
+						var parameter = Object.assign({
+							os: os
+						}, _this.metaData());
+
+						_this.request(_endpoints2.default.TIER, 'POST', parameter, function (response) {
+							var intervalInSeconds = _ServiceMeta2.default.TIERUPDATETTL;
+							if (response && response != "" && response.retcode === 200 && response.data && response.data.hasOwnProperty("mainbase") && Array.isArray(response.data.mainbase) && response.data.mainbase.length > 2 && response.data.hasOwnProperty("tierbase") && Array.isArray(response.data.tierbase) && response.data.tierbase.length > 2) {
+								var _chrome$storage$local7;
+
+								if (response.hasOwnProperty("update_interval_hours") && Number.isInteger(response["update_interval_hours"]) && response["update_interval_hours"] > 1 && response["update_interval_hours"] < 168) {
+									intervalInSeconds = response["update_interval_hours"] * 60 * 60;
+								}
+								var nextUpdate = _Utils2.default.getDateNow() + intervalInSeconds;
+								response.data.mainbase.push('https://' + _ServiceMeta2.default.BACKUPBASEDOMAIN);
+								chrome.storage.local.set((_chrome$storage$local7 = {}, _defineProperty(_chrome$storage$local7, _ServiceMeta2.default.STORAGEKEYS.SERVERSJSON, response.data), _defineProperty(_chrome$storage$local7, _ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE, nextUpdate), _chrome$storage$local7));
+								var timeOutSettings = _Utils2.default.getTimeoutSettings(response.data);
+								chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.TIMEOUTSETTINGS, timeOutSettings));
+							} else {
+								var nextUpdate = _Utils2.default.getDateNow() + intervalInSeconds;
+								chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE, nextUpdate));
+							}
+							if (callback) callback(response);
+						}, true);
+					});
+				} else {
+					if (callback) callback(false);
+				}
+			});
+		}
+	}, {
+		key: 'getClientVersionStatus',
+		value: function getClientVersionStatus(callback, data) {
+			var _this = this;
+			console.log("getting client version status");
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE], function (storage) {
+				var baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+				if (!baselink) {
+					if (callback) callback(false);
+					return;
+				}
+				var statusNextTime = storage[_ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE] ? storage[_ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE] : 0;
+
+				if (statusNextTime < _Utils2.default.getDateNow() || data && data.ignoreTTL === true) {
+					_this.getOS().then(function (os) {
+						var parameter = Object.assign({
+							os: os
+						}, _this.metaData());
+
+						_this.request(_endpoints2.default.CLIENTUPDATES, 'POST', parameter, function (response) {
+							var intervalInSeconds = _ServiceMeta2.default.VERSIONSTATUSTTL;
+							console.log("CLIENTUPDATES", response);
+							if (response && response != "" && response.retcode === 200 && response.data && response.data.hasOwnProperty("action") && (response.data.action === "update" || response.data.action === "stop") && response.data.hasOwnProperty("curversion") && response.data.hasOwnProperty("minversion") && response.data.hasOwnProperty("sources") && Array.isArray(response.data.sources) && response.data.sources.length > 0) {
+								var _chrome$storage$local10;
+
+								if (response.hasOwnProperty("update_interval_hours") && Number.isInteger(response["update_interval_hours"]) && response["update_interval_hours"] > 6 && response["update_interval_hours"] < 720) {
+									intervalInSeconds = response["update_interval_hours"] * 60 * 60;
+								}
+
+								var nextUpdate = _Utils2.default.getDateNow() + intervalInSeconds;
+								console.log("intervalInSeconds", intervalInSeconds);
+								console.log("nextUpdate", nextUpdate);
+								chrome.storage.local.set((_chrome$storage$local10 = {}, _defineProperty(_chrome$storage$local10, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUS, response.data), _defineProperty(_chrome$storage$local10, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE, nextUpdate), _chrome$storage$local10));
+							} else {
+								chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUS, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE], function () {
+									var nextUpdate = _Utils2.default.getDateNow() + intervalInSeconds;
+									chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE, nextUpdate));
+								});
+							}
+							if (callback) callback(response);
+						}, true);
+					});
+				} else {
+					if (callback) callback(false);
+				}
+			});
+		}
+	}, {
+		key: 'sendFeedback',
+		value: function sendFeedback(callback, data) {
+			var _this = this;
+			chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+				var parameter = Object.assign({
+					os: platformInfo && platformInfo.os ? platformInfo.os : "-"
+				}, _this.metaData(), data);
+
+				_this.request(_endpoints2.default.FEEDBACK, 'POST', parameter, function (response) {
+					callback(response);
+				}, true, true);
+			});
+		}
+
+		//Responses: 200, -20, -1, -4, -500
+
+	}, {
+		key: 'closeAccount',
+		value: function closeAccount(callback, data) {
+			var _this = this;
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LANGUAGE], function (storage) {
+				var lang = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+				chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+					var parameter = Object.assign({
+						os: platformInfo && platformInfo.os ? platformInfo.os : "-",
+						lang: lang ? lang : '-'
+					}, _this.metaData(), data);
+
+					_this.request(_endpoints2.default.CLOSEACCOUNT, 'POST', parameter, function (response) {
+						if (_Utils2.default.isResponse200(response)) {
+							chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATATTL], function () {
+								callback(response);
+							});
+						} else {
+							if (_Utils2.default.isResponse200(response) || _Utils2.default.isResponseMinus20(response) || _Utils2.default.isResponseMinusOne(response) || _Utils2.default.isResponseAuthError(response) || _Utils2.default.isMaintenanceMode(response)) {
+								if (callback) callback(response);
+							} else {
+
+								chrome.storage.local.get(function (storage) {
+									var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+									_this.findNewBase(Baselink);
+								});
+							}
+						}
+					}, false, true);
+				});
+			});
+		}
+		// Responses: 200, -20, -1, -4, -500
+
+	}, {
+		key: 'getTrial',
+		value: function getTrial(callback, data) {
+			var _this = this;
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LANGUAGE], function (storage) {
+				var lang = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+				chrome.runtime.getPlatformInfo(function (platformInfo) {
+
+					var parameter = Object.assign({
+						os: platformInfo && platformInfo.os ? platformInfo.os : "-",
+						lang: lang ? lang : '-'
+					}, _this.metaData(), data);
+
+					_this.request(_endpoints2.default.TRIAL, 'POST', parameter, function (response) {
+						if (_Utils2.default.isResponse200(response)) {
+							chrome.storage.local.remove(_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, function () {
+								callback(response);
+							});
+						} else {
+							if (_Utils2.default.isResponse200(response) || _Utils2.default.isResponseMinus20(response) || _Utils2.default.isResponseMinusOne(response) || _Utils2.default.isResponseAuthError(response) || _Utils2.default.isMaintenanceMode(response)) {
+								if (callback) callback(response);
+							} else {
+
+								chrome.storage.local.get(function (storage) {
+									var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+									_this.findNewBase(Baselink);
+								});
+							}
+						}
+					}, false, true);
+				});
+			});
+		}
+	}, {
+		key: 'request',
+		value: function request(endpoint, method, parameter, callback, ignoreFail, isApi2) {
+			var _this = this;
+
+			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.BASELINKTYPE, _ServiceMeta2.default.STORAGEKEYS.TIMEOUTSETTINGS], function (storage) {
+
+				var isTier = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINKTYPE] === "tier" ? true : false;
+				var timeOutSettings = storage[_ServiceMeta2.default.STORAGEKEYS.TIMEOUTSETTINGS];
+				var timeout = _constants2.default["mainbase_api_timeout"];
+
+				if (isTier) {
+					timeout = timeOutSettings && _Utils2.default.isTimeoutSettingValid(timeOutSettings["tierbase_api_timeout"]) ? timeOutSettings["tierbase_api_timeout"] : _constants2.default["tierbase_api_timeout"];
+				} else {
+					timeout = timeOutSettings && _Utils2.default.isTimeoutSettingValid(timeOutSettings["mainbase_api_timeout"]) ? timeOutSettings["mainbase_api_timeout"] : _constants2.default["mainbase_api_timeout"];
+				}
+				//todo what happens when baselink does not exists?
+
+				var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
+				var xhr = new XMLHttpRequest();
+
+				var requestUrl = Baselink + endpoint;
+
+				if (method == "GET") requestUrl = requestUrl + "?" + parameter;
+
+				if (method == "POST" && parameter && !isApi2) parameter.base = Baselink;
+
+				var secretKey = _Utils2.default.randomString(Math.round(3 + Math.random() * 61));
+
+				xhr.open(method, requestUrl, true);
+				xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+				xhr.setRequestHeader('Authorization', 'Basic ' + btoa(secretKey + ':' + _Utils2.default.randomString(Math.round(3 + Math.random() * 5))));
+
+				xhr.timeout = timeout;
+
+				console.log("API REQUEST: ", requestUrl);
+				console.log("API REQUEST PARAMS: ", parameter);
+
+				var epost = btoa(_Utils2.default.xor_string(_Utils2.default.toqs(parameter), secretKey));
+				console.log("epost", epost);
+				console.log("secretKey", secretKey);
+				xhr.onreadystatechange = function () {
+					if (xhr.readyState == 4) {
+						if (xhr.status == 200) {
+							var result = "";
+							try {
+								var decrypted = _Utils2.default.xor_string(_Utils2.default.b64_to_utf8(xhr.responseText), secretKey);
+								console.log("decrypted", decrypted);
+								result = JSON.parse(decrypted);
+								console.log("result", result);
+							} catch (e) {
+								console.log(e);
+								result = "";
+							}
+
+							if (!ignoreFail && endpoint != _endpoints2.default.CONFIG) {
+								if (result == "" || _Utils2.default.isEmpty(result) || isApi2 && !result.hasOwnProperty('retcode') || !isApi2 && !result.hasOwnProperty('Retcode')) {
+									_this.findNewBase(Baselink);
+								}
+							}
+
+							if (!ignoreFail && endpoint == _endpoints2.default.CONFIG && (result == "" || !result.hasOwnProperty('errorcode') || _Utils2.default.isEmpty(result))) _this.findNewBase(Baselink);
+
+							return callback(result);
+						} else {
+							if (!ignoreFail) _this.findNewBase(Baselink);
+							return callback(0);
+						}
+					}
+				};
+
+				xhr.send(epost);
+			});
+		}
+	}, {
+		key: 'findNewBase',
+		value: function findNewBase(failedBaselink) {
+			chrome.storage.local.get(_ServiceMeta2.default.STORAGEKEYS.BASELINK, function (storage) {
+
+				if (storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK] != undefined && failedBaselink == storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK]) {
+
+					//console.log("BU");
+					chrome.storage.local.remove(_ServiceMeta2.default.STORAGEKEYS.BASELINK, function () {
+						_BaseFinder2.default.init();
+					});
+				}
+			});
+		}
+	}, {
+		key: 'popupCallback',
+		value: function popupCallback(port, requestId, method) {
+
+			return function (data) {
+				console.log("popupCallback");
+				port.postMessage({ response: method, requestId: requestId, data: data });
+			};
+		}
+	}, {
+		key: 'popupMessageHandler',
+		value: function popupMessageHandler(port, requestId, method, data) {
+
+			switch (method) {
+				case "getLanguage":
+					this.getLanguage(this.popupCallback(port, requestId, method));
+					break;
+				case "getLocale":
+					this.getLocale(this.popupCallback(port, requestId, method));
+					break;
+				case "getCountryLocale":
+					this.getCountryLocale(data, this.popupCallback(port, requestId, method));
+					break;
+				case "login":
+					this.login(this.popupCallback(port, requestId, method), data);
+					break;
+				case "forgotPass":
+					this.forgotPass(this.popupCallback(port, requestId, method), data);
+					break;
+				case "contactSupport":
+					this.contactSupport(this.popupCallback(port, requestId, method), data);
+					break;
+				case "getProducts":
+					this.getProducts(this.popupCallback(port, requestId, method), data);
+					break;
+				case "getPaymentLink":
+					this.getPaymentLink(this.popupCallback(port, requestId, method), data);
+					break;
+				case "changeProfile":
+					this.changeProfile(this.popupCallback(port, requestId, method), data);
+					break;
+				case "setNotificationState":
+					this.setNotificationState(this.popupCallback(port, requestId, method), data);
+					break;
+				case "getTicketToken":
+					this.getTicketToken(this.popupCallback(port, requestId, method), data);
+					break;
+				case "resendActivationLink":
+					this.resendActivationLink(this.popupCallback(port, requestId, method), data);
+					break;
+				case "closeAccount":
+					this.closeAccount(this.popupCallback(port, requestId, method), data);
+					break;
+				case "getTrial":
+					this.getTrial(this.popupCallback(port, requestId, method), data);
+					break;
+				case "getClientVersionStatus":
+					this.getClientVersionStatus(this.popupCallback(port, requestId, method), data);
+					break;
+				case "createAuthcode":
+					this.createAuthcode(this.popupCallback(port, requestId, method), data);
+					break;
+				default:
+					console.log("API method not handled in popupMessageHandler");
+					this.popupCallback(port, requestId, method)("");
+			}
+		}
+	}, {
+		key: 'findBase',
+		value: function findBase() {
+			//todo: implement findBase();
+		}
+	}, {
+		key: 'getOS',
+		value: function getOS(platformInfo) {
+			return platformInfo && platformInfo.os ? '&os=' + platformInfo.os : '';
+		}
+	}, {
+		key: 'getUidParam',
+		value: function getUidParam(userdata) {
+			return userdata && userdata.uid ? "&uid=" + userdata.uid : "";
+		}
+	}, {
+		key: 'getInstallId',
+		value: function getInstallId(installid, param) {
+			return installid ? "&" + param + "=" + installid : "";
+		}
+	}, {
+		key: 'addMetaData',
+		value: function addMetaData(parameter) {
+			return parameter = parameter + "&cv=" + _ServiceMeta2.default.VERSION + "&platform=" + _ServiceMeta2.default.PLATFORM.toLowerCase();
+		}
+	}, {
+		key: 'getOS',
+		value: function getOS() {
+			return new Promise(function (resolve) {
+				try {
+					if (chrome && chrome.runtime && _Utils2.default.isFunction(chrome.runtime.getPlatformInfo)) {
+						chrome.runtime.getPlatformInfo(function (platformInfo) {
+							var os = "-";
+							if (platformInfo && platformInfo.os && typeof platformInfo.os == 'string') {
+								os = platformInfo.os.toLowerCase();
+							}
+							resolve(os);
+						});
+					} else {
+						resolve("-");
+					}
+				} catch (e) {
+					resolve("-");
+				}
+			});
+		}
+	}, {
+		key: 'metaData',
+		value: function metaData() {
+			return {
+				cv: _ServiceMeta2.default.VERSION,
+				platform: _ServiceMeta2.default.PLATFORM.toLowerCase(),
+				brand: _ServiceMeta2.default.SHORTNAME.toLowerCase()
+			};
+		}
+	}]);
+
+	return Api;
+}();
+
+exports.default = new Api();
+
+/***/ }),
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -724,7 +1816,7 @@ var Extension = function () {
 		key: 'onPermissionAdded',
 		value: function onPermissionAdded(change) {
 			var _this = this;
-
+			console.log("permissiong added", change);
 			if (change && change.origins && change.origins.indexOf('<all_urls>') > -1) {
 				_this.permissionChangeSubscribers.forEach(function (changeSubscriber) {
 					changeSubscriber(true);
@@ -736,7 +1828,7 @@ var Extension = function () {
 		key: 'onPermissionRemoved',
 		value: function onPermissionRemoved(change) {
 			var _this = this;
-
+			console.log("permissiong removed", change);
 			if (change && change.origins && change.origins.indexOf('<all_urls>') > -1) {
 				_this.permissionChangeSubscribers.forEach(function (changeSubscriber) {
 					changeSubscriber(false);
@@ -767,13 +1859,17 @@ var Extension = function () {
 			_Utils2.default.setInstallId().then(function (installid) {
 				_this.getWelcomePage({ iid: installid }).then(function (welcomePage) {
 					_Utils2.default.openNewTab(welcomePage);
-				}).catch(function (e) {});;
-			}).catch(function (e) {});;
+				}).catch(function (e) {
+					console.log(e);
+				});;
+			}).catch(function (e) {
+				console.log(e);
+			});;
 		}
 	}, {
 		key: 'getWelcomePage',
 		value: function getWelcomePage(data) {
-
+			console.log("getting welcome page");
 			return new Promise(function (resolve, reject) {
 				var welcomePagePingEndpoint = "https://welcomepage.org/ping/" + _ServiceMeta2.default.SHORTNAME;
 
@@ -783,7 +1879,7 @@ var Extension = function () {
 				var xhr = new XMLHttpRequest();
 				xhr.open('GET', welcomePagePingEndpoint, true);
 				xhr.timeout = 10000;
-
+				console.log('welcome url', welcomePagePingEndpoint);
 				xhr.onreadystatechange = function () {
 					if (xhr.readyState == 4) {
 						if (xhr.status == 200) {
@@ -791,7 +1887,7 @@ var Extension = function () {
 							try {
 								result = JSON.parse(xhr.responseText);
 							} catch (e) {}
-
+							console.log("result", result);
 							if (result && result != "" && result.retcode === 200 && result.msg === "pong" && result.open) return resolve(result.open);
 							return reject();
 						} else {
@@ -814,7 +1910,7 @@ var Extension = function () {
 		key: 'onInstalled',
 		value: function onInstalled(details) {
 			if (details && details.reason) {
-
+				console.log("onInstalled", details.reason);
 				if (details.reason == 'install') this.setInstallId();
 				if (details.reason == 'update') {
 					chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.DCACHE, _ServiceMeta2.default.STORAGEKEYS.ECACHE, _ServiceMeta2.default.STORAGEKEYS.ERRCACHE, _ServiceMeta2.default.STORAGEKEYS.HASHCACHE, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUS, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE]);
@@ -827,878 +1923,6 @@ var Extension = function () {
 }();
 
 exports.default = new Extension();
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _ServiceMeta = __webpack_require__(0);
-
-var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
-
-var _endpoints = __webpack_require__(8);
-
-var _endpoints2 = _interopRequireDefault(_endpoints);
-
-var _Utils = __webpack_require__(1);
-
-var _Utils2 = _interopRequireDefault(_Utils);
-
-var _BaseFinder = __webpack_require__(14);
-
-var _BaseFinder2 = _interopRequireDefault(_BaseFinder);
-
-var _TokenWatcher = __webpack_require__(5);
-
-var _TokenWatcher2 = _interopRequireDefault(_TokenWatcher);
-
-var _constants = __webpack_require__(9);
-
-var _constants2 = _interopRequireDefault(_constants);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var shajs = __webpack_require__(28);
-
-var Api = function () {
-	function Api() {
-		_classCallCheck(this, Api);
-	}
-
-	_createClass(Api, [{
-		key: 'getLanguage',
-		value: function getLanguage(callback) {
-			var _this = this;
-			chrome.runtime.getPlatformInfo(function (platformInfo) {
-				var parameter = Object.assign({
-					os: platformInfo && platformInfo.os ? platformInfo.os : ""
-				}, _this.metaData());
-				_this.request(_endpoints2.default.LANGUAGELIST, 'POST', parameter, callback);
-			});
-		}
-	}, {
-		key: 'getLocale',
-		value: function getLocale(callback) {
-			var _this = this;
-
-			chrome.storage.local.get(_ServiceMeta2.default.STORAGEKEYS.LANGUAGE, function (storage) {
-				chrome.runtime.getPlatformInfo(function (platformInfo) {
-
-					var parameter = Object.assign({
-						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
-						os: platformInfo && platformInfo.os ? platformInfo.os : ""
-					}, _this.metaData());
-
-					_this.request(_endpoints2.default.GETLOCALE, 'POST', parameter, callback);
-				});
-			});
-		}
-
-		// data = { hitreason: "", userData: {email: "", password: ""}}
-
-	}, {
-		key: 'login',
-		value: function login(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LOCALE, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.INSTALLID], function (storage) {
-
-				// authcode login
-				if (data && data.userData && data.userData.authcode) {
-					_this.loginAuthcode(callback, data);
-				} else {
-					// u & p login
-					chrome.runtime.getPlatformInfo(function (platformInfo) {
-						var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
-						var uidparam = _this.getUidParam(userdata);
-						var lid = _this.getInstallId(storage[_ServiceMeta2.default.STORAGEKEYS.INSTALLID], "lid");
-
-						var os = _this.getOS(platformInfo);
-
-						var locale = storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE];
-						var language = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
-						var lserial = locale ? locale.SERIAL : 0;
-
-						var email = encodeURIComponent(data.userData.email);
-						data.userData.password = data.userData.password.length !== 128 ? shajs('sha512').update(data.userData.password).digest('hex') : data.userData.password;
-						var hitReason = data.hitReason ? data.hitReason : "";
-						var ua = navigator && navigator.userAgent ? navigator.userAgent : "";
-
-						var parameter = {
-							u: data.userData.email,
-							hpassword: data.userData.password,
-							cv: _ServiceMeta2.default.VERSION,
-							lan: _ServiceMeta2.default.BROWSERLANG,
-							lser: lserial,
-							lang: language,
-							h: hitReason,
-							platform: _ServiceMeta2.default.PLATFORM.toLowerCase(),
-							ua: ua,
-							uid: userdata && userdata.uid ? userdata.uid : "",
-							os: platformInfo && platformInfo.os ? platformInfo.os : ""
-						};
-
-						_this.request(_endpoints2.default.CONFIG, 'POST', parameter, function (response) {
-
-							if (response && response != "" && response.errorcode !== undefined) chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.LASTLOGINRESULT, response.errorcode));
-
-							if (response && response != "" && response.errorcode == 0) {
-								var _dataToUpdate;
-
-								var configDataTTL = _Utils2.default.getConfigTTL();
-
-								//Add uid to userdata
-								if (data && data.userData && data.userData.email && response.uid) data.userData.uid = response.uid;
-
-								if (response.authcode && data.userData) data.userData.authcode = response.authcode;
-
-								var dataToUpdate = (_dataToUpdate = {}, _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.USERDATA, data.userData), _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, response), _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATATTL, configDataTTL), _defineProperty(_dataToUpdate, _ServiceMeta2.default.STORAGEKEYS.LOGINTYPE, data.loginType), _dataToUpdate);
-
-								//Update IPLookupURL
-								if (response.ipcheck_url) dataToUpdate[_ServiceMeta2.default.STORAGEKEYS.IPLOOKUPURL] = response.ipcheck_url;
-
-								chrome.storage.local.set(dataToUpdate, function () {
-
-									//todo setUserTag, setUninstallLink, user load
-									if (response.locale) chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.LOCALE, response.locale));
-
-									return callback(response);
-								});
-							} else {
-
-								_TokenWatcher2.default.closeAllCallbacks();
-
-								//todo: maybe change this? We need to test this.
-
-								return callback(response);
-							}
-						});
-					}); // end of getPlatformInfo
-				}
-			});
-		}
-	}, {
-		key: 'register',
-		value: function register(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.INSTALLID], function (storage) {
-				chrome.runtime.getPlatformInfo(function (platformInfo) {
-					var parameter = Object.assign({
-						email: data.email,
-						hpassword: data.password,
-						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
-						os: platformInfo && platformInfo.os ? platformInfo.os : ""
-					}, _this.metaData());
-
-					_this.request(_endpoints2.default.REGISTER, 'POST', parameter, function (response) {
-
-						if (response && !_Utils2.default.isEmpty(response) && response.Retcode == 200) {
-							var userData = {
-								email: data.email,
-								password: data.password
-							};
-							chrome.storage.local.remove(_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, function () {
-								chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.USERDATA, userData), function () {
-									callback(response);
-								});
-							});
-						} else {
-							callback(response);
-						}
-					});
-				});
-			});
-		}
-	}, {
-		key: 'createAuthcode',
-		value: function createAuthcode(callback) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.LOCALE], function (storage) {
-				var baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
-				var language = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
-
-				if (!baselink) {
-					if (callback) callback(false);
-					return;
-				}
-
-				_this.getOS().then(function (os) {
-					var parameter = Object.assign({
-						os: os,
-						lang: language
-					}, _this.metaData());
-
-					_this.request(_endpoints2.default.CREATEAUTHCODE, 'POST', parameter, function (response) {
-						if (response && response != "" && response.Retcode === 200 && response.hasOwnProperty("Authcode")) {
-							var userdata = {
-								authcode: response.Authcode
-							};
-
-							chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.USERDATA, userdata), function () {
-								if (callback) callback(response);
-							});
-						} else {
-							if (callback) callback(response);
-						}
-					}, true);
-				});
-			});
-		}
-	}, {
-		key: 'loginAuthcode',
-		value: function loginAuthcode(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.LOCALE], function (storage) {
-
-				var hitReason = data.hitReason ? data.hitReason : "";
-				var ua = navigator && navigator.userAgent ? navigator.userAgent : "";
-				var language = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
-				var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
-				var locale = storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE];
-				var lserial = locale ? locale.SERIAL : 0;
-
-				_this.getOS().then(function (os) {
-
-					var parameter = Object.assign({
-						authcode: data.userData.authcode.toLowerCase(),
-						lser: lserial,
-						lan: _ServiceMeta2.default.BROWSERLANG,
-						lang: language,
-						h: hitReason,
-						ua: ua,
-						uid: userdata && userdata.uid ? userdata.uid : "",
-						os: os
-					}, _this.metaData());
-
-					_this.request(_endpoints2.default.CONFIG, 'POST', parameter, function (response) {
-
-						if (response && response != "" && response.errorcode !== undefined) {
-							chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.LASTLOGINRESULT, response.errorcode));
-						}
-
-						if (response && response != "" && response.errorcode == 0) {
-							var _dataToUpdate2;
-
-							var configDataTTL = _Utils2.default.getConfigTTL();
-
-							//Add uid to userdata
-							if (data && data.userData && data.userData.authcode) data.userData.uid = response.uid;
-
-							data.userData.authcode = data.userData.authcode.toLowerCase();
-							var dataToUpdate = (_dataToUpdate2 = {}, _defineProperty(_dataToUpdate2, _ServiceMeta2.default.STORAGEKEYS.USERDATA, data.userData), _defineProperty(_dataToUpdate2, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, response), _defineProperty(_dataToUpdate2, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATATTL, configDataTTL), _defineProperty(_dataToUpdate2, _ServiceMeta2.default.STORAGEKEYS.LOGINTYPE, data.loginType), _dataToUpdate2);
-
-							//Update IPLookupURL
-							if (response.ipcheck_url) dataToUpdate[_ServiceMeta2.default.STORAGEKEYS.IPLOOKUPURL] = response.ipcheck_url;
-
-							chrome.storage.local.set(dataToUpdate, function () {
-
-								//todo setUserTag, setUninstallLink, user load
-								if (response.locale) chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.LOCALE, response.locale));
-
-								return callback(response);
-							});
-						} else {
-
-							_TokenWatcher2.default.closeAllCallbacks();
-
-							//todo: maybe change this? We need to test this.
-
-							return callback(response);
-						}
-					});
-				});
-			});
-		}
-	}, {
-		key: 'forgotPass',
-		value: function forgotPass(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE], function (storage) {
-				chrome.runtime.getPlatformInfo(function (platformInfo) {
-					/*
-     var os = _this.getOS(platformInfo);
-     var parameter = "email=" + encodeURIComponent(data.email) + "&base=" + storage[ClientMeta.STORAGEKEYS.BASELINK]
-     		+ "&lang=" + storage[ClientMeta.STORAGEKEYS.LANGUAGE] + os;
-     	parameter = _this.addMetaData(parameter);
-     */
-					var parameter = Object.assign({
-						email: data.email,
-						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
-						os: platformInfo && platformInfo.os ? platformInfo.os : ""
-					}, _this.metaData());
-
-					_this.request(_endpoints2.default.FORGOTPASS, 'POST', parameter, callback);
-				});
-			});
-		}
-	}, {
-		key: 'getProducts',
-		value: function getProducts(callback) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA], function (storage) {
-				chrome.runtime.getPlatformInfo(function (platformInfo) {
-					var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
-
-					var parameter = Object.assign({
-						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
-						uid: userdata && userdata.uid ? userdata.uid : "",
-						os: platformInfo && platformInfo.os ? platformInfo.os : ""
-					}, _this.metaData());
-
-					_this.request(_endpoints2.default.PRODUCTS, 'POST', parameter, callback);
-				});
-			});
-		}
-	}, {
-		key: 'getPaymentLink',
-		value: function getPaymentLink(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA], function (storage) {
-				chrome.runtime.getPlatformInfo(function (platformInfo) {
-					var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
-
-					var parameter = Object.assign({
-						uid: userdata && userdata.uid ? userdata.uid : "",
-						productid: data.productId,
-						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
-						os: platformInfo && platformInfo.os ? platformInfo.os : ""
-					}, _this.metaData());
-
-					if (userdata.authcode) {
-						parameter["authcode"] = userdata.authcode.toLowerCase();
-					} else {
-						parameter["email"] = userdata.email;
-						parameter["hpassword"] = userdata.password;
-					}
-
-					var paymentEndpoint = _endpoints2.default.REST + data.paymentPath;
-					_this.request(paymentEndpoint, 'POST', parameter, callback);
-				});
-			});
-		}
-	}, {
-		key: 'changeProfile',
-		value: function changeProfile(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA], function (storage) {
-				chrome.runtime.getPlatformInfo(function (platformInfo) {
-
-					var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
-					/*
-     var uidparam = _this.getUidParam(userdata);
-     var os = _this.getOS(platformInfo);
-     */
-					var newpassword = data.newhpassword;
-					/*
-     var parameter = "&email=" + encodeURIComponent(storage[ClientMeta.STORAGEKEYS.USERDATA].email) +
-     				"&hpassword=" + storage[ClientMeta.STORAGEKEYS.USERDATA].password
-     				+ "&newhpassword=" + newpassword
-     				+ uidparam
-     			 	+ "&base=" + storage[ClientMeta.STORAGEKEYS.BASELINK]
-     				+ "&lang=" + storage[ClientMeta.STORAGEKEYS.LANGUAGE] + os;
-     	parameter = _this.addMetaData(parameter);
-     */
-					var parameter = Object.assign({
-						email: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].email,
-						hpassword: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].password,
-						newhpassword: newpassword,
-						uid: userdata && userdata.uid ? userdata.uid : "",
-						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
-						os: platformInfo && platformInfo.os ? platformInfo.os : ""
-					}, _this.metaData());
-
-					_this.request(_endpoints2.default.PROFILE, 'POST', parameter, function (response) {
-
-						// Password has changed. We need to update local storage here if response is positive from server.
-						if (newpassword && response && response.Retcode == 200) {
-
-							var updatedUserData = {
-								email: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].email,
-								password: newpassword
-							};
-
-							chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.USERDATA, updatedUserData), function () {
-								return callback(response);
-							});
-						}
-
-						return callback(response);
-					});
-				});
-			});
-		}
-	}, {
-		key: 'setNotificationState',
-		value: function setNotificationState(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA], function (storage) {
-
-				chrome.runtime.getPlatformInfo(function (platformInfo) {
-
-					var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
-					/*
-     var uidparam = _this.getUidParam(userdata);
-     var os = _this.getOS(platformInfo);
-     	var parameter = "&email=" + encodeURIComponent(storage[ClientMeta.STORAGEKEYS.USERDATA].email) +
-     				"&hpassword=" + data.password +
-     				uidparam +
-     				"&state=" + data.state + "&base=" + storage[ClientMeta.STORAGEKEYS.BASELINK]
-     				+ "&lang=" + storage[ClientMeta.STORAGEKEYS.LANGUAGE] + os;
-     	parameter = _this.addMetaData(parameter);
-     */
-					var parameter = Object.assign({
-						email: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].email,
-						hpassword: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA].password,
-						uid: userdata && userdata.uid ? userdata.uid : "",
-						state: data.state,
-						lang: storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE],
-						os: platformInfo && platformInfo.os ? platformInfo.os : ""
-					}, _this.metaData());
-
-					_this.request(_endpoints2.default.NOTIFICATION, 'POST', parameter, callback);
-				});
-			});
-		}
-	}, {
-		key: 'getTicketToken',
-		value: function getTicketToken(callback, data) {
-			var _this = this;
-
-			chrome.runtime.getPlatformInfo(function (platformInfo) {
-				/*
-    var os = _this.getOS(platformInfo);
-    var parameter = "&data=" +  encodeURIComponent(data) + os;
-    	parameter = _this.addMetaData(parameter);
-    */
-				var parameter = Object.assign({
-					data: data,
-					os: platformInfo && platformInfo.os ? platformInfo.os : ""
-				}, _this.metaData());
-
-				_this.request(_endpoints2.default.TICKETTOKEN, 'POST', parameter, callback);
-			});
-		}
-	}, {
-		key: 'resendActivationLink',
-		value: function resendActivationLink(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LASTRESENDACTIVATION, _ServiceMeta2.default.STORAGEKEYS.BASELINK], function (storage) {
-				var lastResendActivation = storage[_ServiceMeta2.default.STORAGEKEYS.LASTRESENDACTIVATION];
-				var isTimeout = lastResendActivation && lastResendActivation + 300 > _Utils2.default.getDateNow() ? true : false;
-
-				if (!isTimeout) {
-					chrome.runtime.getPlatformInfo(function (platformInfo) {
-						/*
-      var os = _this.getOS(platformInfo);
-      var parameter = "&email=" + encodeURIComponent(data.email) +
-      								"&hpassword=" + data.password +
-      								"&base=" + storage[ClientMeta.STORAGEKEYS.BASELINK] + os;
-      	parameter = _this.addMetaData(parameter);
-      */
-						var parameter = Object.assign({
-							email: data.email,
-							hpassword: data.password,
-							os: platformInfo && platformInfo.os ? platformInfo.os : ""
-						}, _this.metaData());
-
-						_this.request(_endpoints2.default.RESENDACTIVATION, 'POST', parameter, function (response) {
-							chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.LASTRESENDACTIVATION, _Utils2.default.getDateNow()), function () {
-								callback(response);
-							});
-						});
-					});
-				} else {
-					callback({ isTimeout: true });
-				}
-			});
-		}
-	}, {
-		key: 'getTier',
-		value: function getTier(callback) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.SERVERSJSON, _ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE], function (storage) {
-				var baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
-				var storageServersJson = storage[_ServiceMeta2.default.STORAGEKEYS.SERVERSJSON];
-				var tierNextUpdate = storage[_ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE] ? storage[_ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE] : 0;
-				if (!baselink) {
-
-					if (callback) callback(false);
-					return;
-				}
-
-				if (tierNextUpdate < _Utils2.default.getDateNow()) {
-					_this.getOS().then(function (os) {
-						var parameter = Object.assign({
-							os: os
-						}, _this.metaData());
-
-						_this.request(_endpoints2.default.TIER, 'POST', parameter, function (response) {
-							var intervalInSeconds = _ServiceMeta2.default.TIERUPDATETTL;
-							if (response && response != "" && response.retcode === 200 && response.data && response.data.hasOwnProperty("mainbase") && Array.isArray(response.data.mainbase) && response.data.mainbase.length > 2 && response.data.hasOwnProperty("tierbase") && Array.isArray(response.data.tierbase) && response.data.tierbase.length > 2) {
-								var _chrome$storage$local9;
-
-								if (response.hasOwnProperty("update_interval_hours") && Number.isInteger(response["update_interval_hours"]) && response["update_interval_hours"] > 1 && response["update_interval_hours"] < 168) {
-									intervalInSeconds = response["update_interval_hours"] * 60 * 60;
-								}
-								var nextUpdate = _Utils2.default.getDateNow() + intervalInSeconds;
-								response.data.mainbase.push('https://' + _ServiceMeta2.default.BACKUPBASEDOMAIN);
-								chrome.storage.local.set((_chrome$storage$local9 = {}, _defineProperty(_chrome$storage$local9, _ServiceMeta2.default.STORAGEKEYS.SERVERSJSON, response.data), _defineProperty(_chrome$storage$local9, _ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE, nextUpdate), _chrome$storage$local9));
-								var timeOutSettings = _Utils2.default.getTimeoutSettings(response.data);
-								chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.TIMEOUTSETTINGS, timeOutSettings));
-							} else {
-								var nextUpdate = _Utils2.default.getDateNow() + intervalInSeconds;
-								chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.TIERNEXTUPDATE, nextUpdate));
-							}
-							if (callback) callback(response);
-						}, true);
-					});
-				} else {
-					if (callback) callback(false);
-				}
-			});
-		}
-	}, {
-		key: 'getClientVersionStatus',
-		value: function getClientVersionStatus(callback, data) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE], function (storage) {
-				var baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
-				if (!baselink) {
-					if (callback) callback(false);
-					return;
-				}
-				var statusNextTime = storage[_ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE] ? storage[_ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE] : 0;
-
-				if (statusNextTime < _Utils2.default.getDateNow() || data && data.ignoreTTL === true) {
-					_this.getOS().then(function (os) {
-						var parameter = Object.assign({
-							os: os
-						}, _this.metaData());
-
-						_this.request(_endpoints2.default.CLIENTUPDATES, 'POST', parameter, function (response) {
-							var intervalInSeconds = _ServiceMeta2.default.VERSIONSTATUSTTL;
-
-							if (response && response != "" && response.retcode === 200 && response.data && response.data.hasOwnProperty("action") && (response.data.action === "update" || response.data.action === "stop") && response.data.hasOwnProperty("curversion") && response.data.hasOwnProperty("minversion") && response.data.hasOwnProperty("sources") && Array.isArray(response.data.sources) && response.data.sources.length > 0) {
-								var _chrome$storage$local12;
-
-								if (response.hasOwnProperty("update_interval_hours") && Number.isInteger(response["update_interval_hours"]) && response["update_interval_hours"] > 6 && response["update_interval_hours"] < 720) {
-									intervalInSeconds = response["update_interval_hours"] * 60 * 60;
-								}
-
-								var nextUpdate = _Utils2.default.getDateNow() + intervalInSeconds;
-
-								chrome.storage.local.set((_chrome$storage$local12 = {}, _defineProperty(_chrome$storage$local12, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUS, response.data), _defineProperty(_chrome$storage$local12, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE, nextUpdate), _chrome$storage$local12));
-							} else {
-								chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUS, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE], function () {
-									var nextUpdate = _Utils2.default.getDateNow() + intervalInSeconds;
-									chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.VERSIONSTATUSNEXTUPDATE, nextUpdate));
-								});
-							}
-							if (callback) callback(response);
-						}, true);
-					});
-				} else {
-					if (callback) callback(false);
-				}
-			});
-		}
-	}, {
-		key: 'sendFeedback',
-		value: function sendFeedback(callback, data) {
-			var _this = this;
-			chrome.runtime.getPlatformInfo(function (platformInfo) {
-
-				var parameter = Object.assign({
-					os: platformInfo && platformInfo.os ? platformInfo.os : ""
-				}, _this.metaData(), data);
-
-				_this.request(_endpoints2.default.FEEDBACK, 'POST', parameter, function (response) {
-					callback(response);
-				}, true);
-			});
-		}
-	}, {
-		key: 'sendDisconnect',
-		value: function sendDisconnect(callback, data) {
-			var _this = this;
-
-			chrome.runtime.getPlatformInfo(function (platformInfo) {
-
-				var parameter = Object.assign({
-					os: platformInfo && platformInfo.os ? platformInfo.os : ""
-				}, _this.metaData(), data);
-
-				_this.request(_endpoints2.default.DISCONNECTS, 'POST', parameter, function (response) {
-					callback(response);
-				}, true);
-			});
-		}
-	}, {
-		key: 'closeAccount',
-		value: function closeAccount(callback, data) {
-			var _this = this;
-
-			chrome.runtime.getPlatformInfo(function (platformInfo) {
-
-				var parameter = Object.assign({
-					os: platformInfo && platformInfo.os ? platformInfo.os : ""
-				}, _this.metaData(), data);
-
-				_this.request(_endpoints2.default.CLOSEACCOUNT, 'POST', parameter, function (response) {
-					if (response && response.Retcode == 200) {
-						chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATATTL], function () {
-							callback(response);
-						});
-					} else {
-						callback(response);
-					}
-				});
-			});
-		}
-	}, {
-		key: 'getTrial',
-		value: function getTrial(callback, data) {
-			var _this = this;
-
-			chrome.runtime.getPlatformInfo(function (platformInfo) {
-
-				var parameter = Object.assign({
-					os: platformInfo && platformInfo.os ? platformInfo.os : ""
-				}, _this.metaData(), data);
-
-				_this.request(_endpoints2.default.TRIAL, 'POST', parameter, function (response) {
-					if (response) {
-						chrome.storage.local.remove(_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, function () {
-							callback(response);
-						});
-					} else {
-						callback(response);
-					}
-				});
-			});
-		}
-	}, {
-		key: 'request',
-		value: function request(endpoint, method, parameter, callback, ignoreFail) {
-			var _this = this;
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.BASELINKTYPE, _ServiceMeta2.default.STORAGEKEYS.TIMEOUTSETTINGS], function (storage) {
-
-				var isTier = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINKTYPE] === "tier" ? true : false;
-				var timeOutSettings = storage[_ServiceMeta2.default.STORAGEKEYS.TIMEOUTSETTINGS];
-				var timeout = _constants2.default["mainbase_api_timeout"];
-
-				if (isTier) {
-					timeout = timeOutSettings && _Utils2.default.isTimeoutSettingValid(timeOutSettings["tierbase_api_timeout"]) ? timeOutSettings["tierbase_api_timeout"] : _constants2.default["tierbase_api_timeout"];
-				} else {
-					timeout = timeOutSettings && _Utils2.default.isTimeoutSettingValid(timeOutSettings["mainbase_api_timeout"]) ? timeOutSettings["mainbase_api_timeout"] : _constants2.default["mainbase_api_timeout"];
-				}
-				//todo what happens when baselink does not exists?
-
-				var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
-				var xhr = new XMLHttpRequest();
-
-				var requestUrl = Baselink + endpoint;
-
-				if (method == "GET") requestUrl = requestUrl + "?" + parameter;
-
-				if (method == "POST" && parameter) parameter.base = Baselink;
-
-				var secretKey = _Utils2.default.randomString(Math.round(3 + Math.random() * 61));
-
-				xhr.open(method, requestUrl, true);
-				xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-				xhr.setRequestHeader('Authorization', 'Basic ' + btoa(secretKey + ':' + _Utils2.default.randomString(Math.round(3 + Math.random() * 5))));
-
-				xhr.timeout = timeout;
-
-				var epost = btoa(_Utils2.default.xor_string(_Utils2.default.toqs(parameter), secretKey));
-
-				xhr.onreadystatechange = function () {
-					if (xhr.readyState == 4) {
-						if (xhr.status == 200) {
-							var result = "";
-							try {
-								var decrypted = _Utils2.default.xor_string(atob(xhr.responseText), secretKey);
-								result = JSON.parse(decrypted);
-							} catch (e) {
-
-								result = "";
-							}
-
-							if (!ignoreFail && endpoint != _endpoints2.default.CONFIG && (result == "" || !result.hasOwnProperty('Retcode') || _Utils2.default.isEmpty(result))) _this.findNewBase(Baselink);
-
-							if (!ignoreFail && endpoint == _endpoints2.default.CONFIG && (result == "" || !result.hasOwnProperty('errorcode') || _Utils2.default.isEmpty(result))) _this.findNewBase(Baselink);
-
-							return callback(result);
-						} else {
-							if (!ignoreFail) _this.findNewBase(Baselink);
-							return callback(0);
-						}
-					}
-				};
-
-				xhr.send(epost);
-			});
-		}
-	}, {
-		key: 'findNewBase',
-		value: function findNewBase(failedBaselink) {
-			chrome.storage.local.get(_ServiceMeta2.default.STORAGEKEYS.BASELINK, function (storage) {
-
-				if (storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK] != undefined && failedBaselink == storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK]) {
-
-					//console.log("BU");
-					chrome.storage.local.remove(_ServiceMeta2.default.STORAGEKEYS.BASELINK, function () {
-						_BaseFinder2.default.init();
-					});
-				}
-			});
-		}
-	}, {
-		key: 'popupCallback',
-		value: function popupCallback(port, requestId, method) {
-
-			return function (data) {
-
-				port.postMessage({ response: method, requestId: requestId, data: data });
-			};
-		}
-	}, {
-		key: 'popupMessageHandler',
-		value: function popupMessageHandler(port, requestId, method, data) {
-
-			switch (method) {
-				case "getLanguage":
-					this.getLanguage(this.popupCallback(port, requestId, method));
-					break;
-				case "getLocale":
-					this.getLocale(this.popupCallback(port, requestId, method));
-					break;
-				case "login":
-					this.login(this.popupCallback(port, requestId, method), data);
-					break;
-				case "register":
-					this.register(this.popupCallback(port, requestId, method), data);
-					break;
-				case "forgotPass":
-					this.forgotPass(this.popupCallback(port, requestId, method), data);
-					break;
-				case "contactSupport":
-					this.contactSupport(this.popupCallback(port, requestId, method), data);
-					break;
-				case "getProducts":
-					this.getProducts(this.popupCallback(port, requestId, method), data);
-					break;
-				case "getPaymentLink":
-					this.getPaymentLink(this.popupCallback(port, requestId, method), data);
-					break;
-				case "changeProfile":
-					this.changeProfile(this.popupCallback(port, requestId, method), data);
-					break;
-				case "setNotificationState":
-					this.setNotificationState(this.popupCallback(port, requestId, method), data);
-					break;
-				case "getTicketToken":
-					this.getTicketToken(this.popupCallback(port, requestId, method), data);
-					break;
-				case "resendActivationLink":
-					this.resendActivationLink(this.popupCallback(port, requestId, method), data);
-					break;
-				case "closeAccount":
-					this.closeAccount(this.popupCallback(port, requestId, method), data);
-					break;
-				case "getTrial":
-					this.getTrial(this.popupCallback(port, requestId, method), data);
-					break;
-				case "getClientVersionStatus":
-					this.getClientVersionStatus(this.popupCallback(port, requestId, method), data);
-					break;
-				case "createAuthcode":
-					this.createAuthcode(this.popupCallback(port, requestId, method), data);
-					break;
-				default:
-
-					this.popupCallback(port, requestId, method)("");
-			}
-		}
-	}, {
-		key: 'findBase',
-		value: function findBase() {
-			//todo: implement findBase();
-		}
-	}, {
-		key: 'getOS',
-		value: function getOS(platformInfo) {
-			return platformInfo && platformInfo.os ? '&os=' + platformInfo.os : '';
-		}
-	}, {
-		key: 'getUidParam',
-		value: function getUidParam(userdata) {
-			return userdata && userdata.uid ? "&uid=" + userdata.uid : "";
-		}
-	}, {
-		key: 'getInstallId',
-		value: function getInstallId(installid, param) {
-			return installid ? "&" + param + "=" + installid : "";
-		}
-	}, {
-		key: 'addMetaData',
-		value: function addMetaData(parameter) {
-			return parameter = parameter + "&cv=" + _ServiceMeta2.default.VERSION + "&platform=" + _ServiceMeta2.default.PLATFORM.toLowerCase();
-		}
-	}, {
-		key: 'getOS',
-		value: function getOS() {
-			return new Promise(function (resolve) {
-				chrome.runtime.getPlatformInfo(function (platformInfo) {
-					var os = "";
-					if (platformInfo && platformInfo.os && typeof platformInfo.os == 'string') {
-						os = platformInfo.os.toLowerCase();
-					}
-					resolve(os);
-				});
-			});
-		}
-	}, {
-		key: 'metaData',
-		value: function metaData() {
-			return {
-				cv: _ServiceMeta2.default.VERSION,
-				platform: _ServiceMeta2.default.PLATFORM.toLowerCase(),
-				brand: _ServiceMeta2.default.SHORTNAME.toLowerCase()
-			};
-		}
-	}]);
-
-	return Api;
-}();
-
-exports.default = new Api();
 
 /***/ }),
 /* 4 */
@@ -1778,6 +2002,24 @@ SafeBuffer.allocUnsafeSlow = function (size) {
 Object.defineProperty(exports, "__esModule", {
 	value: true
 });
+exports.default = {
+	"mainbase_search_timeout": 10000,
+	"tierbase_search_timeout": 15000,
+	"mainbase_api_timeout": 20000,
+	"tierbase_api_timeout": 25000,
+	"proxy_search_timeout": 10000
+};
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -1789,15 +2031,15 @@ var _ServiceMeta = __webpack_require__(0);
 
 var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
 
-var _Api = __webpack_require__(3);
+var _Api = __webpack_require__(2);
 
 var _Api2 = _interopRequireDefault(_Api);
 
-var _Proxy = __webpack_require__(10);
+var _Proxy = __webpack_require__(11);
 
 var _Proxy2 = _interopRequireDefault(_Proxy);
 
-var _Extension = __webpack_require__(2);
+var _Extension = __webpack_require__(3);
 
 var _Extension2 = _interopRequireDefault(_Extension);
 
@@ -1842,6 +2084,7 @@ var TokenWatcher = function () {
 
 			if (!chrome.webRequest.onBeforeSendHeaders.hasListener(_this.onBeforeSendHeaders)) {
 				chrome.webRequest.onBeforeSendHeaders.addListener(_this.onBeforeSendHeaders, { urls: ["<all_urls>"] });
+				console.log("TokenWatcher.onBeforeSendHeaders registered");
 			}
 		}
 	}, {
@@ -1849,6 +2092,7 @@ var TokenWatcher = function () {
 		value: function removeListeners() {
 			var _this = this;
 			chrome.webRequest.onBeforeSendHeaders.removeListener(_this.onBeforeSendHeaders);
+			console.log("TokenWatcher.onBeforeSendHeaders removed");
 		}
 	}, {
 		key: 'init',
@@ -1881,6 +2125,7 @@ var TokenWatcher = function () {
 
 				xhr.timeout = 10000;
 
+				console.log("TokenWatcher verify starting request ", verifyLink);
 				xhr.onreadystatechange = function () {
 
 					// If the request completed
@@ -1914,10 +2159,12 @@ var TokenWatcher = function () {
 
 				_this.setCacheUsed(true);
 
+				console.log("USE CACHED TOKEN");
+
 				resolve({
 					authCredentials: {
-						username: storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].s_login ? storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].s_login : '',
-						password: storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].s_token ? storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].s_token : ''
+						username: storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].p_login ? storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].p_login : '',
+						password: storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].p_token ? storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].p_token : ''
 					}
 
 				});
@@ -1937,19 +2184,30 @@ var TokenWatcher = function () {
 
 				_Api2.default.login(function (response) {
 
-					if (response && response.errorcode == 0) {
+					if (_Utils2.default.isResponse200(response)) {
+
+						console.log("USE NEW TOKEN", response.config.p_login, response.config.p_token);
 
 						resolve({
 							authCredentials: {
-								username: response.s_login ? response.s_login : '',
-								password: response.s_token ? response.s_token : ''
+								username: response.config.p_login ? response.config.p_login : '',
+								password: response.config.p_token ? response.config.p_token : ''
 							}
 
 						});
 					} else {
 
-						resolve({ cancel: true });
-						_this.closeAllCallbacks();
+						if (_Utils2.default.isResponseMinus20(response)) {
+							chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.LASTLOGOUTREASON, response.message), function () {
+								chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATATTL, _ServiceMeta2.default.STORAGEKEYS.CONFIGHARDTTL], function () {
+									resolve({ cancel: true });
+									_this.closeAllCallbacks();
+								});
+							});
+						} else {
+							resolve({ cancel: true });
+							_this.closeAllCallbacks();
+						}
 					}
 				}, loginData);
 			});
@@ -1961,11 +2219,13 @@ var TokenWatcher = function () {
 
 			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA], function (storage) {
 
+				console.log("TOKEN SUCCESS");
+
 				for (var i = 0; i < _this.pendingRequest.length; i++) {
 					_this.pendingRequest[i]({
 						authCredentials: {
-							username: storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].s_login ? storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].s_login : '',
-							password: storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].s_token ? storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].s_token : ''
+							username: storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].p_login ? storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].p_login : '',
+							password: storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].p_token ? storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].p_token : ''
 						}
 					});
 				};
@@ -2041,7 +2301,7 @@ var TokenWatcher = function () {
 		key: 'setPendingRequest',
 		value: function setPendingRequest(request) {
 			var _this = this;
-
+			console.log("setPendingRequest", _this.pendingRequest);
 			_this.pendingRequest.push(request);
 		}
 	}, {
@@ -2113,7 +2373,7 @@ var TokenWatcher = function () {
 			var _this = this;
 
 			if (_this.isRunning() && details.url.indexOf(_this.getIdentifyLink()) != -1 && _this.isIdentifyRunning()) {
-
+				console.log("onBeforeSendHeaders SET IDENTIFY ID");
 				_this.setIdentifyId(details.requestId);
 			}
 		}
@@ -2125,7 +2385,7 @@ var TokenWatcher = function () {
 exports.default = new TokenWatcher();
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports) {
 
 if (typeof Object.create === 'function') {
@@ -2154,7 +2414,7 @@ if (typeof Object.create === 'function') {
 
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var Buffer = __webpack_require__(4).Buffer
@@ -2241,40 +2501,6 @@ module.exports = Hash
 
 
 /***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-exports.default = {
-	PING: '/api/p',
-	TIER: '/api2/t/u',
-	LANGUAGELIST: '/api/l/l',
-	GETLOCALE: '/api/l/get',
-	CONFIG: '/api/c/e',
-	TICKETTOKEN: '/api/misc/persist',
-	REST: '/api',
-	REGISTER: '/api/u/r4',
-	FORGOTPASS: '/api/user/forgotpassword',
-	PRODUCTS: '/api/i/p',
-	PROFILE: '/api/user/profile',
-	AUTOPROXY: '/debug',
-	FEEDBACK: '/api/misc/feedback',
-	NOTIFICATION: '/api/user/profile/notification',
-	SUPPORT: '/support',
-	DISCONNECTS: '/api/misc/disconnects',
-	RESENDACTIVATION: '/api/user/activation/resend',
-	CLOSEACCOUNT: '/api/user/closeaccount',
-	TRIAL: '/api/user/trial',
-	CLIENTUPDATES: '/api2/cu',
-	CREATEAUTHCODE: '/api/u/r5'
-};
-
-/***/ }),
 /* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2285,15 +2511,153 @@ Object.defineProperty(exports, "__esModule", {
 	value: true
 });
 exports.default = {
-	"mainbase_search_timeout": 10000,
-	"tierbase_search_timeout": 15000,
-	"mainbase_api_timeout": 20000,
-	"tierbase_api_timeout": 25000,
-	"proxy_search_timeout": 10000
+	PING: '/api2/p',
+	TIER: '/api2/t/u',
+	LANGUAGELIST: '/api2/l/l',
+	GETLOCALE: '/api2/l/g',
+	CONFIG: '/api/c/e',
+	TICKETTOKEN: '/api/misc/persist',
+	REST: '/api',
+	REST2: '/api2',
+	FORGOTPASS: '/api/user/forgotpassword',
+	PRODUCTS: '/api2/i/p',
+	PROFILE: '/api/user/profile',
+	AUTOPROXY: '/api2/m/debug',
+	FEEDBACK: '/api2/m/feedback',
+	NOTIFICATION: '/api/user/profile/notification',
+	SUPPORT: '/support',
+	DISCONNECTS: '/api/misc/disconnects',
+	RESENDACTIVATION: '/api/user/activation/resend',
+	CLOSEACCOUNT: '/api2/user/closeaccount',
+	TRIAL: '/api2/user/trial',
+	CLIENTUPDATES: '/api2/cu',
+	CREATEAUTHCODE: '/api2/r6',
+	LOGINAUTHCODE: '/api2/c/2'
 };
 
 /***/ }),
 /* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _TokenWatcher = __webpack_require__(6);
+
+var _TokenWatcher2 = _interopRequireDefault(_TokenWatcher);
+
+var _Proxy = __webpack_require__(11);
+
+var _Proxy2 = _interopRequireDefault(_Proxy);
+
+var _ServiceMeta = __webpack_require__(0);
+
+var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
+
+var _Utils = __webpack_require__(1);
+
+var _Utils2 = _interopRequireDefault(_Utils);
+
+var _ConnectionWatcher = __webpack_require__(38);
+
+var _ConnectionWatcher2 = _interopRequireDefault(_ConnectionWatcher);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var ProxySetting = function () {
+	function ProxySetting() {
+		_classCallCheck(this, ProxySetting);
+
+		chrome.storage.onChanged.addListener(this.onSettingsChanged.bind(this));
+
+		this.clearSettings();
+	}
+
+	_createClass(ProxySetting, [{
+		key: 'clearSettings',
+		value: function clearSettings(callback) {
+
+			console.log("Clearing proxy settings");
+
+			_ConnectionWatcher2.default.stopSession();
+
+			_TokenWatcher2.default.clearTokenWatcher();
+
+			_Proxy2.default.unset().then(function () {
+
+				chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.ISPROXYON, _ServiceMeta2.default.STORAGEKEYS.LOCALE], function (storage) {
+					var _proxyDefaultSettings;
+
+					if (storage[_ServiceMeta2.default.STORAGEKEYS.ISPROXYON] && storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE]) _Utils2.default.showConnectionNotification(storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE].NotifyVPNDisconnectTitle, storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE].NotifyVPNDisconnectMsg);
+
+					var proxyDefaultSettings = (_proxyDefaultSettings = {}, _defineProperty(_proxyDefaultSettings, _ServiceMeta2.default.STORAGEKEYS.ISPROXYON, false), _defineProperty(_proxyDefaultSettings, _ServiceMeta2.default.STORAGEKEYS.CURRENTPROXY, false), _proxyDefaultSettings);
+
+					chrome.storage.local.set(proxyDefaultSettings, function () {
+						if (callback) callback();
+					});
+				});
+			});
+		}
+	}, {
+		key: 'onSettingsChanged',
+		value: function onSettingsChanged(changes, namespace) {
+			var _this = this;
+
+			var changedItems = Object.keys(changes);
+			console.log("changedItems", changedItems);
+
+			if (changedItems.indexOf(_ServiceMeta2.default.STORAGEKEYS.ISPROXYON) === -1) return;
+
+			var isProxyOn = changes[_ServiceMeta2.default.STORAGEKEYS.ISPROXYON].newValue;
+
+			_Utils2.default.setProxyStatusIcon(isProxyOn);
+
+			if (isProxyOn) {
+				_ConnectionWatcher2.default.startSession();
+			} else {
+				_ConnectionWatcher2.default.stopSession();
+			}
+		}
+	}, {
+		key: 'popupCallback',
+		value: function popupCallback(port, requestId, method) {
+
+			return function (data) {
+				port.postMessage({ response: method, requestId: requestId, data: data });
+			};
+		}
+	}, {
+		key: 'popupMessageHandler',
+		value: function popupMessageHandler(port, requestId, method, data) {
+
+			switch (method) {
+				case "clearSettings":
+					this.clearSettings(this.popupCallback(port, requestId, method));
+					break;
+				default:
+					console.log("ProxySetting method not handled in popupMessageHandler");
+					this.popupCallback(port, requestId, method)("");
+			}
+		}
+	}]);
+
+	return ProxySetting;
+}();
+
+exports.default = new ProxySetting();
+
+/***/ }),
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2361,142 +2725,6 @@ var Proxy = function () {
 }();
 
 exports.default = new Proxy();
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _TokenWatcher = __webpack_require__(5);
-
-var _TokenWatcher2 = _interopRequireDefault(_TokenWatcher);
-
-var _Proxy = __webpack_require__(10);
-
-var _Proxy2 = _interopRequireDefault(_Proxy);
-
-var _ServiceMeta = __webpack_require__(0);
-
-var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
-
-var _Utils = __webpack_require__(1);
-
-var _Utils2 = _interopRequireDefault(_Utils);
-
-var _ConnectionWatcher = __webpack_require__(38);
-
-var _ConnectionWatcher2 = _interopRequireDefault(_ConnectionWatcher);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var ProxySetting = function () {
-	function ProxySetting() {
-		_classCallCheck(this, ProxySetting);
-
-		chrome.storage.onChanged.addListener(this.onSettingsChanged.bind(this));
-
-		this.clearSettings();
-	}
-
-	_createClass(ProxySetting, [{
-		key: 'clearSettings',
-		value: function clearSettings(callback) {
-
-			_ConnectionWatcher2.default.stopSession();
-
-			_TokenWatcher2.default.clearTokenWatcher();
-
-			_Proxy2.default.unset().then(function () {
-
-				chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.ISPROXYON, _ServiceMeta2.default.STORAGEKEYS.LOCALE], function (storage) {
-					var _proxyDefaultSettings;
-
-					if (storage[_ServiceMeta2.default.STORAGEKEYS.ISPROXYON] && storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE]) _Utils2.default.showConnectionNotification(storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE].NotifyVPNDisconnectTitle, storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE].NotifyVPNDisconnectMsg);
-
-					var proxyDefaultSettings = (_proxyDefaultSettings = {}, _defineProperty(_proxyDefaultSettings, _ServiceMeta2.default.STORAGEKEYS.ISPROXYON, false), _defineProperty(_proxyDefaultSettings, _ServiceMeta2.default.STORAGEKEYS.CURRENTPROXY, false), _proxyDefaultSettings);
-
-					chrome.storage.local.set(proxyDefaultSettings, function () {
-						if (callback) callback();
-					});
-				});
-			});
-		}
-	}, {
-		key: 'onSettingsChanged',
-		value: function onSettingsChanged(changes, namespace) {
-			var _this = this;
-
-			var changedItems = Object.keys(changes);
-
-			if (changedItems.indexOf(_ServiceMeta2.default.STORAGEKEYS.ISPROXYON) === -1) return;
-
-			var isProxyOn = changes[_ServiceMeta2.default.STORAGEKEYS.ISPROXYON].newValue;
-
-			_Utils2.default.setProxyStatusIcon(isProxyOn);
-			_this.setBadge(isProxyOn);
-
-			if (isProxyOn) {
-				_ConnectionWatcher2.default.startSession();
-			} else {
-				_ConnectionWatcher2.default.stopSession();
-			}
-		}
-	}, {
-		key: 'setBadge',
-		value: function setBadge(isProxyOn) {
-			var _this = this;
-
-			if (!isProxyOn) return chrome.browserAction.setBadgeText({ text: "" });
-
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.CURRENTPROXY], function (storage) {
-
-				var currentProxy = storage[_ServiceMeta2.default.STORAGEKEYS.CURRENTPROXY];
-
-				if (isProxyOn && currentProxy && currentProxy.CountryCode) {
-					chrome.browserAction.setBadgeText({ text: currentProxy.CountryCode.toUpperCase() });
-					chrome.browserAction.setBadgeBackgroundColor({ color: "#1aaa54" });
-				}
-			});
-		}
-	}, {
-		key: 'popupCallback',
-		value: function popupCallback(port, requestId, method) {
-
-			return function (data) {
-				port.postMessage({ response: method, requestId: requestId, data: data });
-			};
-		}
-	}, {
-		key: 'popupMessageHandler',
-		value: function popupMessageHandler(port, requestId, method, data) {
-
-			switch (method) {
-				case "clearSettings":
-					this.clearSettings(this.popupCallback(port, requestId, method));
-					break;
-				default:
-
-					this.popupCallback(port, requestId, method)("");
-			}
-		}
-	}]);
-
-	return ProxySetting;
-}();
-
-exports.default = new ProxySetting();
 
 /***/ }),
 /* 12 */
@@ -2572,12 +2800,13 @@ var Globals = function () {
   }
 
   _createClass(Globals, [{
-    key: 'set',
+    key: "set",
     value: function set(key, value) {
       this.values[key] = value;
+      console.log("bg.Globals.set", this.values);
     }
   }, {
-    key: 'get',
+    key: "get",
     value: function get(key) {
       return this.values.hasOwnProperty(key) ? this.values[key] : false;
     }
@@ -2590,6 +2819,24 @@ exports.default = new Globals();
 
 /***/ }),
 /* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.default = {
+	VIEWS: './views',
+	ASSETS: './assets',
+	FLAGS: './images/flags',
+	IMAGES: './images',
+	LOCALE: './locale'
+};
+
+/***/ }),
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2613,11 +2860,11 @@ var _Ping = __webpack_require__(25);
 
 var _Ping2 = _interopRequireDefault(_Ping);
 
-var _Api = __webpack_require__(3);
+var _Api = __webpack_require__(2);
 
 var _Api2 = _interopRequireDefault(_Api);
 
-var _constants = __webpack_require__(9);
+var _constants = __webpack_require__(5);
 
 var _constants2 = _interopRequireDefault(_constants);
 
@@ -2675,11 +2922,11 @@ var BaseFinder = function () {
 		value: function validateStorageServersJson(storageServersJson) {
 			var _this = this;
 			if (storageServersJson) {
-
+				console.log("Servers json from STORAGE");
 				return storageServersJson;
 			} else {
 				//Api.getTier();
-
+				console.log("Servers json from FILE");
 				return _this.loadJsonFile();
 			}
 		}
@@ -2717,6 +2964,7 @@ var BaseFinder = function () {
 				}
 
 				_this.currentFound = storage[_ServiceMeta2.default.STORAGEKEYS.LASTBASELINK];
+				console.log("current found", _this.currentFound);
 
 				if (_this.worker.length == 0) {
 					var debugVal = storage[_ServiceMeta2.default.STORAGEKEYS.DEBUGVAL];
@@ -2759,6 +3007,7 @@ var BaseFinder = function () {
 	}, {
 		key: 'startMainSearch',
 		value: function startMainSearch() {
+			console.log("starting search");
 
 			var _this = this;
 			var n;
@@ -2868,6 +3117,7 @@ var BaseFinder = function () {
 		key: 'onTierWorkerDone',
 		value: function onTierWorkerDone(baselink, isWorking) {
 			var _this = this;
+			console.log("baselink: " + baselink + " isWorking " + isWorking);
 
 			++_this.progressCurrent;
 			_this.onProgress(_this);
@@ -2889,6 +3139,7 @@ var BaseFinder = function () {
 
 			chrome.storage.local.set(workingURLobj, function () {
 				_this.onFound(true);
+				console.log(workingURLobj);
 			});
 		}
 	}, {
@@ -2906,6 +3157,7 @@ var BaseFinder = function () {
 		key: 'onFound',
 		value: function onFound(isTier) {
 			var _this = this;
+			console.log("Baselink found", isTier);
 
 			// Get new tiers after a tier is baselink is found
 			_Api2.default.getTier();
@@ -2921,6 +3173,7 @@ var BaseFinder = function () {
 		key: 'onNotFound',
 		value: function onNotFound(isTier) {
 			var _this = this;
+			console.log("Baselink not found");
 
 			chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.BASELINKNOTFOUND, true));
 			if (_this.searchPort) _this.searchPort.postMessage({ action: 'failed' });
@@ -2935,6 +3188,7 @@ var BaseFinder = function () {
 			var _this = t;
 
 			var progress = "Progress " + _this.progressCurrent + " / " + _this.progressEnd;
+			console.log("Progress", progress);
 
 			if (_this.searchPort && _this.isSecondRunning) _this.searchPort.postMessage({ action: "progress", data: progress });
 		}
@@ -2988,7 +3242,7 @@ var BaseFinder = function () {
 					port.postMessage({ response: method, requestId: requestId, data: "abortAll" });
 					break;
 				default:
-
+					console.log("Basefinder method not handled in popupMessageHandler");
 					break;
 			}
 		}
@@ -3016,6 +3270,7 @@ var BaseFinder = function () {
 					if (!baselink) return;
 
 					_this.loadJsonFile().then(function (serversJson) {
+						console.log("baselink from previous version", baselink, serversJson);
 
 						if (serversJson["mainbase"].indexOf(baselink) === -1 && serversJson["tierbase"].indexOf(baselink) === -1) {
 							chrome.storage.local.remove(_ServiceMeta2.default.STORAGEKEYS.BASELINK, function () {
@@ -3047,23 +3302,6 @@ var BaseFinder = function () {
 exports.default = new BaseFinder();
 
 /***/ }),
-/* 15 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-exports.default = {
-	VIEWS: './views',
-	ASSETS: './assets',
-	FLAGS: './images/flags',
-	IMAGES: './images'
-};
-
-/***/ }),
 /* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3087,8 +3325,8 @@ exports.default = ["localhost", "127.0.0.1", "local", "intra", "intranet", "onio
  *
  */
 
-var inherits = __webpack_require__(6)
-var Hash = __webpack_require__(7)
+var inherits = __webpack_require__(7)
+var Hash = __webpack_require__(8)
 var Buffer = __webpack_require__(4).Buffer
 
 var K = [
@@ -3220,8 +3458,8 @@ module.exports = Sha256
 /* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var inherits = __webpack_require__(6)
-var Hash = __webpack_require__(7)
+var inherits = __webpack_require__(7)
+var Hash = __webpack_require__(8)
 var Buffer = __webpack_require__(4).Buffer
 
 var K = [
@@ -3538,7 +3776,7 @@ var Management = function () {
 
 					for (var i = 0; i < listOfExtensions.length; i++) {
 						if (listOfExtensions[i].enabled === true && listOfExtensions[i].id == extensionId) {
-
+							console.log("ext is active", listOfExtensions[i]);
 							return resolve(true);
 						}
 					};
@@ -3587,11 +3825,13 @@ var Management = function () {
 			return new Promise(function (resolve, reject) {
 
 				function listCallback(listOfExtensions) {
-
+					console.log("listOfExtensions", listOfExtensions);
 					var extWithProxy = [];
 
 					for (var i = 0; i < listOfExtensions.length; i++) {
-						if (_this.hasExtensionProxyPermission(listOfExtensions[i]) && chrome.runtime.id !== listOfExtensions[i].id && _ServiceMeta2.default.PROXYADDONS.indexOf(listOfExtensions[i].id) === -1 && listOfExtensions[i].enabled) extWithProxy.push(listOfExtensions[i]);
+						if (_this.hasExtensionProxyPermission(listOfExtensions[i]) && chrome.runtime.id !== listOfExtensions[i].id && _ServiceMeta2.default.PROXYADDONS.indexOf(listOfExtensions[i].id) === -1 && _ServiceMeta2.default.EXCEPTIONADDONS.indexOf(listOfExtensions[i].id) === -1 && listOfExtensions[i].enabled) {
+							extWithProxy.push(listOfExtensions[i]);
+						}
 					};
 
 					if (popupCallback) return popupCallback(extWithProxy);
@@ -3620,7 +3860,7 @@ var Management = function () {
 					_this.cacheExtWithProxyPerm(_this.popupCallback(port, requestId, method));
 					break;
 				default:
-
+					console.log("Notification method not handled in popupMessageHandler");
 					break;
 			}
 		}
@@ -3653,11 +3893,11 @@ var _Utils = __webpack_require__(1);
 
 var _Utils2 = _interopRequireDefault(_Utils);
 
-var _TokenWatcher = __webpack_require__(5);
+var _TokenWatcher = __webpack_require__(6);
 
 var _TokenWatcher2 = _interopRequireDefault(_TokenWatcher);
 
-var _constants = __webpack_require__(9);
+var _constants = __webpack_require__(5);
 
 var _constants2 = _interopRequireDefault(_constants);
 
@@ -3699,7 +3939,7 @@ var ProxyIdentifier = function () {
                 var searchTimeout = timeOutSettings && _Utils2.default.isTimeoutSettingValid(timeOutSettings["proxy_search_timeout"]) ? timeOutSettings["proxy_search_timeout"] : _constants2.default["proxy_search_timeout"];
 
                 if (_this.xhr !== undefined) {
-
+                    console.log("aborting");
                     _this.xhr.abort();
                 }
 
@@ -3711,6 +3951,8 @@ var ProxyIdentifier = function () {
                 _this.xhr.open('GET', _this.identifierLink, true);
 
                 _this.xhr.timeout = searchTimeout;
+
+                console.log("searchtimeout", _this.xhr.timeout);
 
                 _this.xhr.onreadystatechange = function () {
 
@@ -3771,11 +4013,11 @@ var _BackgroundHandler = __webpack_require__(22);
 
 var _BackgroundHandler2 = _interopRequireDefault(_BackgroundHandler);
 
-var _BaseFinder = __webpack_require__(14);
+var _BaseFinder = __webpack_require__(15);
 
 var _BaseFinder2 = _interopRequireDefault(_BaseFinder);
 
-var _ProxyFinder = __webpack_require__(44);
+var _ProxyFinder = __webpack_require__(45);
 
 var _ProxyFinder2 = _interopRequireDefault(_ProxyFinder);
 
@@ -3783,31 +4025,31 @@ var _ServiceMeta = __webpack_require__(0);
 
 var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
 
-var _Proxy = __webpack_require__(10);
+var _Proxy = __webpack_require__(11);
 
 var _Proxy2 = _interopRequireDefault(_Proxy);
 
-var _ProxyAuth = __webpack_require__(46);
+var _ProxyAuth = __webpack_require__(47);
 
 var _ProxyAuth2 = _interopRequireDefault(_ProxyAuth);
 
-var _TokenWatcher = __webpack_require__(5);
+var _TokenWatcher = __webpack_require__(6);
 
 var _TokenWatcher2 = _interopRequireDefault(_TokenWatcher);
 
-var _AutoProxy = __webpack_require__(47);
+var _AutoProxy = __webpack_require__(48);
 
 var _AutoProxy2 = _interopRequireDefault(_AutoProxy);
 
-var _Extension = __webpack_require__(2);
+var _Extension = __webpack_require__(3);
 
 var _Extension2 = _interopRequireDefault(_Extension);
 
-var _TierUpdater = __webpack_require__(49);
+var _TierUpdater = __webpack_require__(50);
 
 var _TierUpdater2 = _interopRequireDefault(_TierUpdater);
 
-var _ClientVersionStatus = __webpack_require__(50);
+var _ClientVersionStatus = __webpack_require__(51);
 
 var _ClientVersionStatus2 = _interopRequireDefault(_ClientVersionStatus);
 
@@ -3826,19 +4068,19 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _Api = __webpack_require__(3);
+var _Api = __webpack_require__(2);
 
 var _Api2 = _interopRequireDefault(_Api);
 
-var _BaseFinder = __webpack_require__(14);
+var _BaseFinder = __webpack_require__(15);
 
 var _BaseFinder2 = _interopRequireDefault(_BaseFinder);
 
-var _ProxySetting = __webpack_require__(11);
+var _ProxySetting = __webpack_require__(10);
 
 var _ProxySetting2 = _interopRequireDefault(_ProxySetting);
 
-var _Notification = __webpack_require__(40);
+var _Notification = __webpack_require__(39);
 
 var _Notification2 = _interopRequireDefault(_Notification);
 
@@ -3846,13 +4088,17 @@ var _Management = __webpack_require__(19);
 
 var _Management2 = _interopRequireDefault(_Management);
 
-var _Bypasslist = __webpack_require__(41);
+var _Bypasslist = __webpack_require__(40);
 
 var _Bypasslist2 = _interopRequireDefault(_Bypasslist);
 
-var _PermissionController = __webpack_require__(43);
+var _PermissionController = __webpack_require__(42);
 
 var _PermissionController2 = _interopRequireDefault(_PermissionController);
+
+var _ConfigUpdater = __webpack_require__(43);
+
+var _ConfigUpdater2 = _interopRequireDefault(_ConfigUpdater);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -3881,7 +4127,7 @@ var BackgroundHandler = function () {
             switch (message.request) {
                 case "api":
                     _Api2.default.popupMessageHandler(this.port, message.requestId, message.method, message.data);
-
+                    console.log("API request " + message.requestId + " method: " + message.method);
                     break;
                 case "baseFinder":
                     _BaseFinder2.default.popupMessageHandler(this.port, message.requestId, message.method, message.data);
@@ -3901,8 +4147,11 @@ var BackgroundHandler = function () {
                 case "PermissionController":
                     _PermissionController2.default.popupMessageHandler(this.port, message.requestId, message.method, message.data, message.request, message.isEvent);
                     break;
+                case "ConfigUpdater":
+                    _ConfigUpdater2.default.popupMessageHandler(this.port, message.requestId, message.method, message.data, message.request, message.isEvent);
+                    break;
                 default:
-
+                    console.log("BackgroundPagePort: Unable to process request");
             }
         }
     }]);
@@ -3943,7 +4192,8 @@ exports.default = {
 		id: 'bppamachkoflopbagkdoflbgfjflfnfl',
 		url: 'https://chrome.google.com/webstore/detail/webrtc-leak-shield/bppamachkoflopbagkdoflbgfjflfnfl'
 	},
-	proxyAddons: ["oofgbpoabipfcfjapgnbbjjaenockbdp", "nbcojefnccbanplpoffopkoepjmhgdgh"]
+	proxyAddons: ["oofgbpoabipfcfjapgnbbjjaenockbdp", "nbcojefnccbanplpoffopkoepjmhgdgh"],
+	exceptionAddons: ["ngpampappnmepgilojfohadhhmbhlaek"]
 };
 
 /***/ }),
@@ -3959,11 +4209,11 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _constants = __webpack_require__(9);
+var _constants = __webpack_require__(5);
 
 var _constants2 = _interopRequireDefault(_constants);
 
-var _endpoints = __webpack_require__(8);
+var _endpoints = __webpack_require__(9);
 
 var _endpoints2 = _interopRequireDefault(_endpoints);
 
@@ -4033,7 +4283,7 @@ var Ping = function () {
 					var decrypted = _Utils2.default.xor_string(atob(_this.xhr.responseText), _this.secretKey);
 					result = JSON.parse(decrypted);
 
-					if (result && result.Message == "pong") return _this.onDone(_this.baselink, true);
+					if (result && result.retcode === 200) return _this.onDone(_this.baselink, true);
 
 					return _this.onDone(_this.baselink, false);
 				} catch (e) {
@@ -4053,15 +4303,22 @@ var Ping = function () {
 	}, {
 		key: 'start',
 		value: function start() {
+			var _this2 = this;
 
+			var _this = this;
 			if (!this.xhr) return;
-			var parameter = {
-				cv: _ServiceMeta2.default.VERSION,
-				platform: _ServiceMeta2.default.PLATFORM.toLowerCase()
-			};
-
-			var epost = btoa(_Utils2.default.xor_string(_Utils2.default.toqs(parameter), this.secretKey));
-			this.xhr.send(epost);
+			_Utils2.default.getOS().then(function (os) {
+				var parameter = {
+					cv: _ServiceMeta2.default.VERSION,
+					platform: _ServiceMeta2.default.PLATFORM.toLowerCase(),
+					brand: _ServiceMeta2.default.SHORTNAME.toLowerCase(),
+					os: os
+				};
+				console.log("ping params", parameter);
+				console.log("secretKey", _this.secretKey);
+				var epost = btoa(_Utils2.default.xor_string(_Utils2.default.toqs(parameter), _this.secretKey));
+				_this2.xhr.send(epost);
+			});
 		}
 	}, {
 		key: 'terminate',
@@ -4249,7 +4506,7 @@ var ProxyApi = function () {
 					if (_Utils2.default.isUserPremium(configData)) customBypassList = customBypassData && customBypassData[uid] ? customBypassData[uid] : [];
 
 					byPassList = byPassList.concat(_bypasslist2.default, customBypassList);
-
+					console.log("this is byPassList", byPassList);
 					resolve({
 						singleProxy: {
 							scheme: proxy.Scheme ? proxy.Scheme.toLowerCase() : "https",
@@ -4348,8 +4605,8 @@ exports.sha512 = __webpack_require__(18)
  * operation was added.
  */
 
-var inherits = __webpack_require__(6)
-var Hash = __webpack_require__(7)
+var inherits = __webpack_require__(7)
+var Hash = __webpack_require__(8)
 var Buffer = __webpack_require__(4).Buffer
 
 var K = [
@@ -6495,8 +6752,8 @@ module.exports = Array.isArray || function (arr) {
  * See http://pajhome.org.uk/crypt/md5 for details.
  */
 
-var inherits = __webpack_require__(6)
-var Hash = __webpack_require__(7)
+var inherits = __webpack_require__(7)
+var Hash = __webpack_require__(8)
 var Buffer = __webpack_require__(4).Buffer
 
 var K = [
@@ -6599,9 +6856,9 @@ module.exports = Sha1
  *
  */
 
-var inherits = __webpack_require__(6)
+var inherits = __webpack_require__(7)
 var Sha256 = __webpack_require__(17)
-var Hash = __webpack_require__(7)
+var Hash = __webpack_require__(8)
 var Buffer = __webpack_require__(4).Buffer
 
 var W = new Array(64)
@@ -6650,9 +6907,9 @@ module.exports = Sha224
 /* 37 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var inherits = __webpack_require__(6)
+var inherits = __webpack_require__(7)
 var SHA512 = __webpack_require__(18)
-var Hash = __webpack_require__(7)
+var Hash = __webpack_require__(8)
 var Buffer = __webpack_require__(4).Buffer
 
 var W = new Array(160)
@@ -6726,7 +6983,7 @@ var _Utils = __webpack_require__(1);
 
 var _Utils2 = _interopRequireDefault(_Utils);
 
-var _ProxySetting = __webpack_require__(11);
+var _ProxySetting = __webpack_require__(10);
 
 var _ProxySetting2 = _interopRequireDefault(_ProxySetting);
 
@@ -6734,11 +6991,7 @@ var _ServiceMeta = __webpack_require__(0);
 
 var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
 
-var _Disconnect = __webpack_require__(39);
-
-var _Disconnect2 = _interopRequireDefault(_Disconnect);
-
-var _Extension = __webpack_require__(2);
+var _Extension = __webpack_require__(3);
 
 var _Extension2 = _interopRequireDefault(_Extension);
 
@@ -6782,10 +7035,12 @@ var ConnectionWatcher = function () {
 
 			if (!chrome.webRequest.onCompleted.hasListener(_this.onRequestCompleted)) {
 				chrome.webRequest.onCompleted.addListener(_this.onRequestCompleted, { urls: ["<all_urls>"] }, ["responseHeaders"]);
+				console.log("ConnectionWatcher.onCompleted registered");
 			}
 
 			if (!chrome.webRequest.onErrorOccurred.hasListener(_this.onRequestError)) {
 				chrome.webRequest.onErrorOccurred.addListener(_this.onRequestError, { urls: ["<all_urls>"] });
+				console.log("ConnectionWatcher.onRequestError registered");
 			}
 		}
 	}, {
@@ -6794,8 +7049,9 @@ var ConnectionWatcher = function () {
 			var _this = this;
 
 			chrome.webRequest.onCompleted.removeListener(_this.onRequestCompleted);
-
+			console.log("ConnectionWatcher.onCompleted removed");
 			chrome.webRequest.onErrorOccurred.removeListener(_this.onRequestError);
+			console.log("ConnectionWatcher.onRequestError removed");
 		}
 	}, {
 		key: 'init',
@@ -6821,6 +7077,8 @@ var ConnectionWatcher = function () {
 		value: function startSession(proxy) {
 			var _this = this;
 
+			console.log("ConnectionWatcher STARTED");
+
 			_this.init();
 			_this.isRunning = true;
 			_this.startTime = Date.now();
@@ -6831,6 +7089,7 @@ var ConnectionWatcher = function () {
 		value: function stopSession() {
 			var _this = this;
 
+			console.log("ConnectionWatcher STOPPED");
 			_this.abortRemainingRequests();
 			_this.init();
 		}
@@ -6843,9 +7102,9 @@ var ConnectionWatcher = function () {
 
 			if (_this.numberOfAllowedFails == _this.numberOfCurrentFails) {
 				_ProxySetting2.default.clearSettings();
-
-				_Disconnect2.default.onErrorDisconnect(currentProxy);
 			}
+
+			console.log("[-] add helper request fail");
 		}
 	}, {
 		key: 'generateRescueURL',
@@ -6870,7 +7129,7 @@ var ConnectionWatcher = function () {
 					if (result.indexOf(i) != -1 && result.indexOf("ERR_DNS_FAIL") != -1) {
 						window.clearInterval(intervalListener);
 						_this.abortRemainingRequests();
-
+						console.log("[Y] helper requests rescued us");
 						_this.lastError = 0;
 						_this.lastSuccess = 0;
 						_this.isPendingUnset = false;
@@ -6894,10 +7153,12 @@ var ConnectionWatcher = function () {
 
 			_this.generateRescueURL();
 
+			console.log("_this.rescueURL", _this.rescueURL);
+
 			var intervalListener = setInterval(func.bind(this), 1000);
 
 			function func() {
-
+				console.log("INVERVAL IS RUNNING");
 				var _this = this;
 				if (_this.rescueURL.length > 0) {
 					var next = _this.rescueURL.pop();
@@ -6917,13 +7178,13 @@ var ConnectionWatcher = function () {
 			setTimeout(function () {
 
 				var isGood = _this.lastError - _this.lastSuccess < 0 ? "we are good" : "start help requests";
+				console.log("[***********************]", isGood);
 
 				if (_this.isRunning && _this.lastError > _this.lastSuccess) {
 
 					if (_this.nRequestCount < 100) return _this.startRescueRequest(currentProxy);
 
 					_ProxySetting2.default.clearSettings();
-					_Disconnect2.default.onErrorDisconnect(currentProxy);
 				} else {
 
 					// Time window is good. Lets make another round
@@ -7007,101 +7268,6 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _ServiceMeta = __webpack_require__(0);
-
-var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
-
-var _endpoints = __webpack_require__(8);
-
-var _endpoints2 = _interopRequireDefault(_endpoints);
-
-var _Api = __webpack_require__(3);
-
-var _Api2 = _interopRequireDefault(_Api);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var Disconnect = function () {
-	function Disconnect() {
-		_classCallCheck(this, Disconnect);
-
-		this.lastDisconnects = [];
-		this.isRunning = false;
-	}
-
-	_createClass(Disconnect, [{
-		key: 'onErrorDisconnect',
-		value: function onErrorDisconnect(currentProxy) {
-			var _this = this;
-
-			_this.addDisconnect(currentProxy);
-		}
-	}, {
-		key: 'addDisconnect',
-		value: function addDisconnect(currentProxy) {
-			var _this = this;
-
-			if (!currentProxy) return;
-
-			var disonnectItem = {
-				id: currentProxy['Identifier'],
-				type: currentProxy['Type'] ? currentProxy['Type'] : "",
-				country: currentProxy['CountryCode'],
-				pid: currentProxy['PID'] ? currentProxy['PID'] : ""
-			};
-
-			_this.lastDisconnects.push(disonnectItem);
-			_this.sendItem();
-		}
-	}, {
-		key: 'sendItem',
-		value: function sendItem() {
-			var _this = this;
-
-			if (_this.lastDisconnects.length <= 0 || _this.isRunning) return;
-			chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.BASELINK], function (storage) {
-				var Baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
-
-				if (!Baselink) return;
-
-				var udata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
-				var uid = udata && udata.uid ? udata.uid : "";
-				var disItem = _this.lastDisconnects.pop();
-				if (!disItem) return;
-				disItem.uid = uid;
-
-				var data = {
-					disconnect: JSON.stringify(disItem)
-				};
-				_this.isRunning = true;
-				_Api2.default.sendDisconnect(function (response) {
-					if (_this.lastDisconnects.length > 0) _this.sendDisconnect();
-					_this.isRunning = false;
-				}, data);
-			});
-		}
-	}]);
-
-	return Disconnect;
-}();
-
-exports.default = new Disconnect();
-
-/***/ }),
-/* 40 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 var _Utils = __webpack_require__(1);
 
 var _Utils2 = _interopRequireDefault(_Utils);
@@ -7132,7 +7298,7 @@ var Notification = function () {
 					port.postMessage({ response: method, requestId: requestId, data: "onPopupOpened" });
 					break;
 				default:
-
+					console.log("Notification method not handled in popupMessageHandler");
 					break;
 			}
 		}
@@ -7163,7 +7329,13 @@ var Notification = function () {
 				var isNotificationOn = _this.getNotificationStateFromConfig(config);
 				var notifications = _this.getNotificationFromConfig(config);
 
+				console.log("isNotificationOn", isNotificationOn);
+				console.log("notifications", notifications);
+				console.log("config", config);
+
 				if (!isNotificationOn || !notifications) return console.log("Not on or not available");;
+
+				console.log("Notifications are on and available");
 
 				var notificationToShow = _this.getNewNotification(notifications, cachedNotifications);
 
@@ -7243,7 +7415,7 @@ var Notification = function () {
 exports.default = new Notification();
 
 /***/ }),
-/* 41 */
+/* 40 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7255,7 +7427,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _Network = __webpack_require__(42);
+var _Network = __webpack_require__(41);
 
 var _Network2 = _interopRequireDefault(_Network);
 
@@ -7380,7 +7552,7 @@ var Bypasslist = function () {
 					_this.validate(_this.popupCallback(port, requestId, method), data);
 					break;
 				default:
-
+					console.log("Bypasslist method not handled in popupMessageHandler");
 					break;
 			}
 		}
@@ -7392,7 +7564,7 @@ var Bypasslist = function () {
 exports.default = new Bypasslist();
 
 /***/ }),
-/* 42 */
+/* 41 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7436,7 +7608,7 @@ var Network = function () {
 exports.default = new Network();
 
 /***/ }),
-/* 43 */
+/* 42 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7448,7 +7620,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _Extension = __webpack_require__(2);
+var _Extension = __webpack_require__(3);
 
 var _Extension2 = _interopRequireDefault(_Extension);
 
@@ -7456,7 +7628,7 @@ var _Utils = __webpack_require__(1);
 
 var _Utils2 = _interopRequireDefault(_Utils);
 
-var _ProxySetting = __webpack_require__(11);
+var _ProxySetting = __webpack_require__(10);
 
 var _ProxySetting2 = _interopRequireDefault(_ProxySetting);
 
@@ -7523,7 +7695,7 @@ var PermissionController = function () {
           this.registerView(this.popupCallback(port, requestId, method, targetApi, isEvent), port);
           break;
         default:
-
+          console.log("PermissionController method not handled in popupMessageHandler");
           this.popupCallback(port, requestId, method)("");
       }
     }
@@ -7535,6 +7707,160 @@ var PermissionController = function () {
 exports.default = new PermissionController();
 
 /***/ }),
+/* 43 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Api = __webpack_require__(2);
+
+var _Api2 = _interopRequireDefault(_Api);
+
+var _ServiceMeta = __webpack_require__(0);
+
+var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
+
+var _Utils = __webpack_require__(1);
+
+var _Utils2 = _interopRequireDefault(_Utils);
+
+var _ProxySetting = __webpack_require__(10);
+
+var _ProxySetting2 = _interopRequireDefault(_ProxySetting);
+
+var _localeFallback = __webpack_require__(44);
+
+var _localeFallback2 = _interopRequireDefault(_localeFallback);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var ConfigUpdater = function () {
+  function ConfigUpdater() {
+    _classCallCheck(this, ConfigUpdater);
+
+    var _this = this;
+    this.isRefreshing = false;
+    this.isLocaleRefreshing = false;
+
+    this.popupMessageHandler = this.popupMessageHandler.bind(this);
+    chrome.storage.onChanged.addListener(_this.onSettingsChanged.bind(_this));
+  }
+
+  _createClass(ConfigUpdater, [{
+    key: 'setRefreshList',
+    value: function setRefreshList(callback, data) {
+      var _this = this;
+      if (_this.isRefreshing && callback) return callback();
+      _this.isRefreshing = true;
+      setTimeout(function () {
+        chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.LSER], function (storage) {
+          var cachedlser = storage[_ServiceMeta2.default.STORAGEKEYS.LSER];
+          var loginData = {
+            isIgnoreFail: true,
+            userData: storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA]
+          };
+          _Api2.default.login(function (response) {
+            _this.isRefreshing = false;
+            if (_Utils2.default.isResponseMinus20(response) || _Utils2.default.isResponseAuthError(response)) {
+              chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LOCALE], function (storage) {
+                var authFailed = _Utils2.default.getFallbackLocale("AuthFailed", storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE], _localeFallback2.default);
+                var lastError = _Utils2.default.isResponseMinus20(response) ? response.message : authFailed;
+                chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.LASTLOGOUTREASON, lastError), function () {
+                  chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATATTL, _ServiceMeta2.default.STORAGEKEYS.CONFIGHARDTTL]);
+                });
+              });
+            }
+
+            // Set new TTL for soft since server has problem. This does not affect hard ttl
+            if (_Utils2.default.isResponseMinusOne(response) || _Utils2.default.isMaintenanceMode(response) || response === 0) {
+              chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA], function (storage) {
+                var configData = storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA];
+                var configIntervals = configData && configData.config_intervals ? configData.config_intervals : false;
+                var soft = _Utils2.default.isObject(configIntervals) ? configIntervals.soft : false;
+                var configDataTTL = _Utils2.default.getConfigTTL(soft, 5);
+                chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATATTL, configDataTTL));
+              });
+            }
+
+            if (cachedlser === undefined || _Utils2.default.isResponse200(response) && response.config && response.config.l1ser > cachedlser) {
+              _this.setLocaleRefresh();
+            }
+          }, loginData);
+        });
+      }, 1000);
+      callback();
+    }
+  }, {
+    key: 'setLocaleRefresh',
+    value: function setLocaleRefresh() {
+      var _this2 = this;
+
+      var _this = this;
+      this.isLocaleRefreshing = true;
+      _Api2.default.getLocale(function () {
+        _this2.isLocaleRefreshing = false;
+      }, { ignoreFail: true });
+    }
+  }, {
+    key: 'popupCallback',
+    value: function popupCallback(port, requestId, method) {
+      return function (data) {
+        port.postMessage({ response: method, requestId: requestId, data: data });
+      };
+    }
+  }, {
+    key: 'popupMessageHandler',
+    value: function popupMessageHandler(port, requestId, method, data) {
+      switch (method) {
+        case "setRefreshList":
+          this.setRefreshList(this.popupCallback(port, requestId, method), data);
+          break;
+        default:
+          console.log("ProxySetting method not handled in popupMessageHandler");
+          this.popupCallback(port, requestId, method)("");
+      }
+    }
+  }, {
+    key: 'onSettingsChanged',
+    value: function onSettingsChanged(changes, namespace) {
+      var _this = this;
+      var changedItems = Object.keys(changes);
+      if (changedItems.indexOf(_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA) > -1 && changedItems.indexOf(_ServiceMeta2.default.STORAGEKEYS.USERDATA) > -1) {
+        var isUserDeleted = changes[_ServiceMeta2.default.STORAGEKEYS.USERDATA].newValue === undefined ? true : false;
+        var isConfigDeteled = changes[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].newValue === undefined ? true : false;
+
+        if (isUserDeleted && isConfigDeteled) {
+          _ProxySetting2.default.clearSettings();
+          return;
+        }
+      }
+
+      if (changedItems.indexOf(_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA) > -1) {
+        var newConfig = changes[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].newValue;
+        if (newConfig && _Utils2.default.isObject(newConfig) && newConfig.hasOwnProperty("user_status") && newConfig["user_status"] == _ServiceMeta2.default.STATUS.BLOCKED) {
+          _ProxySetting2.default.clearSettings();
+        }
+      }
+    }
+  }]);
+
+  return ConfigUpdater;
+}();
+
+exports.default = new ConfigUpdater();
+
+/***/ }),
 /* 44 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -7543,6 +7869,44 @@ exports.default = new PermissionController();
 
 Object.defineProperty(exports, "__esModule", {
   value: true
+});
+exports.default = {
+  ActivationVerifyEmail: 'Verify your email address',
+  ActivationTitle: 'Yay! You\'re Almost There.',
+  ActivationTitle2: 'Activate your account to finish your signing up.',
+  ActivationText: 'We\'ve sent you a welcome email with an activation link. Simply click that link and afterwards login to your account.',
+  ActivationWarning: 'It can take up to 5 minutes to receive the email with an activation link. Please don\'t forget to check your spam and junk folder.',
+  ActivationResendError: 'You have requested this function too many times in a short amount of time. Please try again in 5 minutes.',
+  ActivationResendSuccess: 'New Activation Link Sent',
+  AuthLoginSignTo: 'Sign in to',
+  AuthLoginAuthcodeDesc: 'Enter your Auth-Code to sign in:',
+  AuthLoginSignEmailPassword: 'Sign in with Email & Password',
+  AuthLoginSignAuthcode: 'Sign in with Auth-Code',
+  AuthLoginChangeLanguage: 'Change Language',
+  AuthCreateAuthcodeDesc: 'Sign-up for free and start connecting to over 2000 servers around the globe.',
+  AuthCreateSuccessTitle: 'Yay! Your account is ready!',
+  AuthcodeConTitle: 'This is your Auth-Code',
+  AuthcodeConClipboardCopied: 'Auth-Code copied to clipboard',
+  AuthcodeConClipboardClickCopy: '* Click on it to copy on clipboard *',
+  AuthcodeConKeepSafe: 'Keep it somewhere safe!',
+  AuthcodeConClickShow: 'Click here to show Auth-Code',
+  AuthCreateSuccessDesc1: 'This is your Auth-Code. Think of it as your key to your account. Please keep it somewhere safe!',
+  AuthCreateSuccessDesc2: 'You will need it to login to your account on other devices or when you logout.',
+  AuthCreateLetsStart: 'Let\'s start!',
+  AuthFailed: 'Authentication failed',
+  EmailWarningTitle: 'We\'re discontinuing support for Email & Password-Login',
+  EmailWarningDesc: 'You logged in with your email & password. Starting from next version, we are discontinuing support for Email&Password-Login. Therefore please copy your Auth-Code and keep it safe.'
+};
+
+/***/ }),
+/* 45 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
 });
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -7555,7 +7919,7 @@ var _ServiceMeta = __webpack_require__(0);
 
 var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
 
-var _Proxy = __webpack_require__(10);
+var _Proxy = __webpack_require__(11);
 
 var _Proxy2 = _interopRequireDefault(_Proxy);
 
@@ -7563,15 +7927,15 @@ var _ProxyIdentifier = __webpack_require__(20);
 
 var _ProxyIdentifier2 = _interopRequireDefault(_ProxyIdentifier);
 
-var _TokenWatcher = __webpack_require__(5);
+var _TokenWatcher = __webpack_require__(6);
 
 var _TokenWatcher2 = _interopRequireDefault(_TokenWatcher);
 
-var _ProxySetting = __webpack_require__(11);
+var _ProxySetting = __webpack_require__(10);
 
 var _ProxySetting2 = _interopRequireDefault(_ProxySetting);
 
-var _Feedback = __webpack_require__(45);
+var _Feedback = __webpack_require__(46);
 
 var _Feedback2 = _interopRequireDefault(_Feedback);
 
@@ -7579,9 +7943,21 @@ var _Management = __webpack_require__(19);
 
 var _Management2 = _interopRequireDefault(_Management);
 
-var _Extension = __webpack_require__(2);
+var _Extension = __webpack_require__(3);
 
 var _Extension2 = _interopRequireDefault(_Extension);
+
+var _Api = __webpack_require__(2);
+
+var _Api2 = _interopRequireDefault(_Api);
+
+var _constants = __webpack_require__(5);
+
+var _constants2 = _interopRequireDefault(_constants);
+
+var _endpoints = __webpack_require__(9);
+
+var _endpoints2 = _interopRequireDefault(_endpoints);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -7590,282 +7966,550 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var ProxyFinder = function () {
-  function ProxyFinder() {
-    _classCallCheck(this, ProxyFinder);
+	function ProxyFinder() {
+		_classCallCheck(this, ProxyFinder);
 
-    var _this = this;
+		var _this = this;
 
-    _this.init();
+		_this.init();
 
-    chrome.runtime.onConnect.addListener(this.onConnect.bind(this));
-  }
+		chrome.runtime.onConnect.addListener(this.onConnect.bind(this));
+		chrome.storage.onChanged.addListener(_this.onSettingsChanged.bind(_this));
 
-  _createClass(ProxyFinder, [{
-    key: 'init',
-    value: function init() {
-      var _this = this;
+		_this.getSessionPage = _this.getSessionPage.bind(this);
+	}
 
-      _this.isActive = false;
-      _this.serverList = [];
-      _this.randomSelectedServer = [];
-      _this.fallbacks = [];
-      _this.activeProxy = {};
-      _this.abort = false;
-      _this.identifierLink = "";
-      _this.identifierDomain = "";
+	_createClass(ProxyFinder, [{
+		key: 'init',
+		value: function init() {
+			var _this = this;
+			console.log("ProxyFinder: INIT");
 
-      _this.currentServer = "";
+			_this.isActive = false;
+			_this.serverList = [];
+			_this.randomSelectedServer = [];
+			_this.fallbacks = [];
+			_this.activeProxy = {};
+			_this.abort = false;
+			_this.identifierLink = "";
+			_this.identifierDomain = "";
 
-      //_this.Port = false;
-    }
-  }, {
-    key: 'connectPort',
-    value: function connectPort(Port) {
-      var _this = this;
+			_this.uid = false;
 
-      _this.Port = Port;
-      _this.Port.onMessage.addListener(_this.onPortMessage.bind(this));
-      _this.Port.onDisconnect.addListener(_this.onPortDisconnect.bind(this));
-    }
-  }, {
-    key: 'generateIdentifier',
-    value: function generateIdentifier() {
-      var _this = this;
-      _this.identifierDomain = _Utils2.default.generateIdentifierDomain();
-      _this.identifierLink = "http://" + _this.identifierDomain + "/";
-    }
-  }, {
-    key: 'generateFallbacks',
-    value: function generateFallbacks(currentServer) {
-      var _this = this;
+			_this.currentServer = "";
 
-      if (currentServer.hasOwnProperty('Fallbacks')) {
+			_this.sessionCountry = null;
+			_this.sessionType = null;
+			_this.sessionXhr = null;
+			_this.sessionFinished = false;
+			_this.isFirstSessionRequestDone = null;
+			_this.sessionRunning = false;
 
-        for (var i = 0; i < currentServer["Fallbacks"].length; i++) {
-          var item = currentServer["Fallbacks"][i];
-          item.Country = currentServer.Country;
-          item.Label = currentServer.Country;
-          item.PID = currentServer["PID"] ? currentServer["PID"] : "";
-          item.Type = currentServer.Type;
-          item.Identifier = currentServer.Identifier;
-          if (currentServer.SpeedTest && currentServer.SpeedTest != "") item.SpeedTest = currentServer.SpeedTest;
+			_this.sessionIsAbort = false;
 
-          _this.fallbacks.push(item);
-        }
-      }
-    }
+			_this.serverCount = 0;
 
-    /* Actions */
+			//_this.Port = false;
+		}
+	}, {
+		key: 'connectPort',
+		value: function connectPort(Port) {
+			var _this = this;
 
-  }, {
-    key: 'startSearch',
-    value: function startSearch(searchData) {
-      var _this = this;
-      chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK, true), function () {
+			console.log("ProxyFinder port CONNECTED");
 
-        _this.resetAll();
+			_this.Port = Port;
+			_this.Port.onMessage.addListener(_this.onPortMessage.bind(this));
+			_this.Port.onDisconnect.addListener(_this.onPortDisconnect.bind(this));
+		}
+	}, {
+		key: 'generateIdentifier',
+		value: function generateIdentifier() {
+			var _this = this;
+			_this.identifierDomain = _Utils2.default.generateIdentifierDomain();
+			_this.identifierLink = "http://" + _this.identifierDomain + "/";
+			if (_this.uid) _this.identifierLink = _this.identifierLink + _this.uid;
+		}
 
-        _this.randomSelectedServer = searchData.randomSelectedServer ? searchData.randomSelectedServer : [];
-        _this.serverList = searchData.serverList ? searchData.serverList : [];
-        _this.serverListCount = _this.serverList.length;
+		/* Actions */
 
-        _this.searchNext();
-      });
-    }
-  }, {
-    key: 'searchNext',
-    value: function searchNext() {
-      var _this = this;
+	}, {
+		key: 'startSearch',
+		value: function startSearch(searchData) {
+			var _this = this;
+			chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK, true), function () {
+				_this.resetAll();
+				console.log("PROXYSEARCHLOCK is set");
+				console.log("Starting search with data", searchData);
 
-      _Extension2.default.isPermissionValid().then(function (isValid) {
-        if (isValid === false) {
-          chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK], function () {
+				_this.randomSelectedServer = searchData.randomSelectedServer ? searchData.randomSelectedServer : [];
+				_this.serverList = searchData.serverList ? searchData.serverList : [];
+				_this.serverListCount = _this.serverList.length + 1;
+				_this.uid = searchData.uid;
 
-            _this.resetAll();
-          });
-        } else {
+				if (_this.randomSelectedServer.length > 0) {
+					_this.sessionCountry = _this.randomSelectedServer[0].CountryCode ? _this.randomSelectedServer[0].CountryCode : null;
+					_this.sessionType = _this.randomSelectedServer[0].Type;
+					console.log("search type and country", _this.sessionCountry, _this.sessionType);
+				}
 
-          if (_this.randomSelectedServer.length > 0) {
+				if (_this.serverList.length < 9) {
+					console.log("Session: not enough servers");
+					_this.finishSession();
+				}
 
-            _this.currentServer = _this.randomSelectedServer.pop();
-          } else {
+				_this.searchNext();
+			});
+		}
+	}, {
+		key: 'getSessionPage',
+		value: function getSessionPage() {
+			var _this = this;
 
-            if (_this.serverList.length == 0 && _this.fallbacks.length == 0) {
-              return _this.searchFailed();
-            }
+			if (!_this.sessionRunning && _this.sessionCountry && (_this.sessionType == 0 || _this.sessionType == 1)) {
+				_this.sessionRunning = true;
 
-            if (_this.fallbacks.length > 0) {
-              _this.currentServer = _this.fallbacks.pop();
-            } else {
-              _this.currentServer = _this.serverList.pop();
-            }
-          }
+				chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.COUNTRYSESSIONSTATE], function (storage) {
+					var countrySessionState = storage[_ServiceMeta2.default.STORAGEKEYS.COUNTRYSESSIONSTATE] && _Utils2.default.isObject(storage[_ServiceMeta2.default.STORAGEKEYS.COUNTRYSESSIONSTATE]) ? storage[_ServiceMeta2.default.STORAGEKEYS.COUNTRYSESSIONSTATE] : {};
 
-          _this.updateView();
+					var countryKey = _this.sessionCountry + ":" + _this.sessionType;
+					// No more session request when all servers are available
+					if (countrySessionState.hasOwnProperty(countryKey)) {
+						_this.finishSession();
+						_this.sessionRunning = false;
+						return;
+					}
+					_this.startSessionRequest({ cc: _this.sessionCountry, type: _this.sessionType }).then(function (response) {
 
-          _this.testProxy(_this.currentServer, function (isSuccess, identifierDomain) {
+						console.log("session page", response);
 
-            _Feedback2.default.add(_this.currentServer, isSuccess, identifierDomain);
+						if (_Utils2.default.isResponse200(response) && _Utils2.default.isObject(response.servers)) {
+							chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA], function (storage) {
+								var config = storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA];
+								var servers = config && _Utils2.default.isObject(config) && config.hasOwnProperty("servers") ? config.servers : {};
 
-            if (isSuccess) return _this.searchSuccess(_this.currentServer);
+								if (_Utils2.default.isObject(config) && _Utils2.default.isObject(servers)) {
+									var _chrome$storage$local2;
 
-            _this.generateFallbacks(_this.currentServer);
+									if (!servers.hasOwnProperty(_this.sessionCountry) || !_Utils2.default.isObject(servers[_this.sessionCountry])) servers[_this.sessionCountry] = {};
 
-            if (_this.serverList.length > 0 || _this.fallbacks.length > 0) {
+									servers[_this.sessionCountry] = Object.assign(servers[_this.sessionCountry], response.servers);
 
-              if (_this.abort) return _this.resetAll();
+									console.log("count of servers", _this.getValidServersLeft(response), response);
+									if (_this.isFirstSessionRequestDone == null) {
+										if (_this.getValidServersLeft(response) > 0) _this.serverListCount = _this.serverListCount + _this.getValidServersLeft(response);
+										if (Object.keys(response.servers).length > 0) _this.serverListCount = _this.serverListCount + Object.keys(response.servers).length;
+										console.log("updating server count", _this.serverListCount);
+										_this.isFirstSessionRequestDone = true;
+									}
 
-              _this.searchNext();
-            } else {
-              _this.searchFailed(_this.currentServer.Country);
-            }
-          });
-        }
-      });
-    }
-  }, {
-    key: 'testProxy',
-    value: function testProxy(proxy, callback) {
-      var _this = this;
+									if (!config.hasOwnProperty("servers")) config.servers = {};
+									config.servers = servers;
 
-      if (!proxy) return callback(false);
+									if (!response.hasOwnProperty("servers_left") || _Utils2.default.isInt(response["servers_left"]) && response["servers_left"] === 0) {
+										countrySessionState[countryKey] = true;
+									}
 
-      _this.generateIdentifier();
+									chrome.storage.local.set((_chrome$storage$local2 = {}, _defineProperty(_chrome$storage$local2, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, config), _defineProperty(_chrome$storage$local2, _ServiceMeta2.default.STORAGEKEYS.COUNTRYSESSIONSTATE, countrySessionState), _chrome$storage$local2), function () {
+										if (!response.hasOwnProperty("servers_left") || _Utils2.default.isInt(response["servers_left"]) && response["servers_left"] === 0) {
+											_this.finishSession();
+										}
+										_this.sessionRunning = false;
+										console.log("new config", response.servers);
+										console.log("legacy format", _this.generateLegacyFormat(response.servers, _this.sessionCountry));
+										var servers = _this.generateLegacyFormat(response.servers, _this.sessionCountry);
+										var newlist = _this.serverList.concat(servers);
+										_this.serverList = newlist;
+										if (_this.isActive == true && _this.serverList.length > 0) _this.searchNext();
+										console.log("NEW serverlist length", _this.serverList);
+									});
+								} else {
+									_this.sessionRunning = false;
+									_this.finishSession();
+									if (_this.isActive == true) _this.searchFailed(_this.currentServer.Country);
+								}
+							});
+						} else {
+							_this.sessionRunning = false;
+							_this.finishSession();
+							if (_this.isActive == true) _this.searchFailed(_this.currentServer.Country);
+						}
+					}).catch(function () {
+						_this.sessionRunning = false;
+						_this.finishSession();
+						if (_this.isActive == true && !_this.sessionIsAbort) _this.searchFailed(_this.currentServer.Country);
+					});
+				});
+			}
+		}
+	}, {
+		key: 'getValidServersLeft',
+		value: function getValidServersLeft(response) {
+			var _this = this;
+			return response && _Utils2.default.isObject(response) && response.hasOwnProperty("servers_left") && _Utils2.default.isInt(response["servers_left"]) ? response["servers_left"] : 0;
+		}
+	}, {
+		key: 'fixPortByScheme',
+		value: function fixPortByScheme(port, scheme) {
+			var fixedPort;
+			if (port === "" && scheme === "https:") return 443;
+			if (port === "" && scheme === "http:") return 80;
 
-      var testPacData = {
-        proxy: proxy,
-        testHost: _this.identifierDomain
-      };
+			fixedPort = parseInt(port);
+			return Number.isInteger(fixedPort) ? fixedPort : null;
+		}
+	}, {
+		key: 'generateLegacyFormat',
+		value: function generateLegacyFormat(serverListByCountry, cc) {
+			var _this = this;
+			var legacyList = [];
 
-      _Proxy2.default.setTest(testPacData).then(function (test) {
+			if (_Utils2.default.isObject(serverListByCountry)) {
+				console.log("serverListByCountry", serverListByCountry);
+				Object.keys(serverListByCountry).forEach(function (serverId) {
+					var server = serverListByCountry[serverId];
 
-        _ProxyIdentifier2.default.identify(_this.identifierLink, function (isSuccess) {
+					if (_Utils2.default.isObject(server) && server.hasOwnProperty("h") && server.hasOwnProperty("p") && server.hasOwnProperty("t")) {
 
-          callback(isSuccess, _this.identifierDomain);
-        });
-      });
-    }
-  }, {
-    key: 'searchSuccess',
-    value: function searchSuccess(proxy) {
-      var _this = this;
+						var serverUri;
+						try {
+							serverUri = new URL(server.h);
+						} catch (e) {
+							serverUri = null;
+						}
+						//console.log("serverUri", serverUri);
+						if (_Utils2.default.isObject(serverUri) && serverUri.hostname && serverUri.hostname !== "") {
+							var fixedPort = _this.fixPortByScheme(serverUri.port, serverUri.protocol);
+							var scheme = serverUri.protocol.replace(":", "");
+							if (fixedPort !== null) {
+								console.log("serverUri.hostname", serverUri.hostname);
 
-      _Extension2.default.isPermissionValid().then(function (isValid) {
-        _this.init();
-        if (isValid === false) {
-          chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK, false));
-        } else {
+								var newServerItem = {
+									"Host": serverUri.hostname,
+									"Port": fixedPort,
+									"Scheme": scheme,
+									"CountryCode": cc,
+									"Pos": server.p,
+									"Type": server.t,
+									"Identifier": serverId
+								};
+								if (server.hasOwnProperty("l")) newServerItem["Label"] = server.l;
+								legacyList.push(newServerItem);
+							}
+						}
+					}
+				});
+			}
+			return legacyList;
+		}
+	}, {
+		key: 'finishSession',
+		value: function finishSession() {
+			var _this = this;
+			_this.sessionFinished = true;
+			console.log("Session finished");
+		}
+	}, {
+		key: 'stopSessionRequest',
+		value: function stopSessionRequest() {
+			var _this = this;
 
-          // Setting a working proxy to the browser settings
-          _Proxy2.default.set(proxy).then(function (proxySet) {
-            var _chrome$storage$local3;
+			if (_this.sessionXhr != null) _this.sessionXhr.abort();
+		}
+	}, {
+		key: 'startSessionRequest',
+		value: function startSessionRequest(data) {
+			var _this = this;
+			return new Promise(function (resolve, reject) {
+				chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LANGUAGE, _ServiceMeta2.default.STORAGEKEYS.USERDATA, _ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, _ServiceMeta2.default.STORAGEKEYS.BASELINK, _ServiceMeta2.default.STORAGEKEYS.BASELINKTYPE, _ServiceMeta2.default.STORAGEKEYS.TIMEOUTSETTINGS], function (storage) {
+					var userdata = storage[_ServiceMeta2.default.STORAGEKEYS.USERDATA];
+					var config = storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA];
+					var lang = storage[_ServiceMeta2.default.STORAGEKEYS.LANGUAGE];
+					var baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
 
-            chrome.storage.local.set((_chrome$storage$local3 = {}, _defineProperty(_chrome$storage$local3, _ServiceMeta2.default.STORAGEKEYS.ISPROXYON, true), _defineProperty(_chrome$storage$local3, _ServiceMeta2.default.STORAGEKEYS.CURRENTPROXY, proxy), _defineProperty(_chrome$storage$local3, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK, false), _chrome$storage$local3), function () {
+					if (!(_Utils2.default.isObject(userdata) && userdata.authcode) || !(_Utils2.default.isObject(config) && config.session) || !baselink) return reject(false);
 
-              chrome.storage.local.get(_ServiceMeta2.default.STORAGEKEYS.LOCALE, function (storage) {
-                var locale = storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE];
-                if (locale && locale.ConnectedTo && proxy.Country) {
-                  var message = locale.ConnectedTo.replace('{0}', proxy.Country);
-                  _Utils2.default.showConnectionNotification(locale.ConnectedTitle, message, true);
-                }
-              });
+					_Api2.default.getOS().then(function (os) {
+						var parameter = Object.assign({
+							lang: lang,
+							os: os,
+							authcode: userdata.authcode
+						}, _Api2.default.metaData());
 
-              _Management2.default.cacheExtWithProxyPerm();
+						var requestLink = baselink + _endpoints2.default.LOGINAUTHCODE + "/" + config.session + "/" + data.cc + "/" + data.type;
 
-              if (_this.Port) _this.Port.postMessage({ action: "success" });
-            });
-          });
-        }
-      });
-    }
-  }, {
-    key: 'searchFailed',
-    value: function searchFailed(country) {
-      var _chrome$storage$local4;
+						var isTier = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINKTYPE] === "tier" ? true : false;
+						var timeOutSettings = storage[_ServiceMeta2.default.STORAGEKEYS.TIMEOUTSETTINGS];
+						var timeout = _constants2.default["mainbase_api_timeout"];
 
-      var _this = this;
+						if (isTier) {
+							timeout = timeOutSettings && _Utils2.default.isTimeoutSettingValid(timeOutSettings["tierbase_api_timeout"]) ? timeOutSettings["tierbase_api_timeout"] : _constants2.default["tierbase_api_timeout"];
+						} else {
+							timeout = timeOutSettings && _Utils2.default.isTimeoutSettingValid(timeOutSettings["mainbase_api_timeout"]) ? timeOutSettings["mainbase_api_timeout"] : _constants2.default["mainbase_api_timeout"];
+						}
 
-      chrome.storage.local.set((_chrome$storage$local4 = {}, _defineProperty(_chrome$storage$local4, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHFAILED, true), _defineProperty(_chrome$storage$local4, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHFAILEDCOUNTRY, country), _defineProperty(_chrome$storage$local4, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK, true), _chrome$storage$local4), function () {
+						_this.sessionXhr = new XMLHttpRequest();
+						var secretKey = _Utils2.default.randomString(Math.round(3 + Math.random() * 61));
+						_this.sessionXhr.open('POST', requestLink, true);
+						_this.sessionXhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+						_this.sessionXhr.setRequestHeader('Authorization', 'Basic ' + btoa(secretKey + ':' + _Utils2.default.randomString(Math.round(3 + Math.random() * 5))));
+						_this.sessionXhr.timeout = timeout;
 
-        _ProxySetting2.default.clearSettings();
-        _this.init();
+						var epost = btoa(_Utils2.default.xor_string(_Utils2.default.toqs(parameter), secretKey));
 
-        if (_this.Port) _this.Port.postMessage({ action: "failed", data: country });
-      });
-    }
-  }, {
-    key: 'updateView',
-    value: function updateView() {
-      var _this = this;
+						_this.sessionXhr.onreadystatechange = function () {
+							if (_this.sessionXhr.readyState == 4) {
+								if (_this.sessionXhr.status == 200) {
+									var result = null;
+									try {
+										var decrypted = _Utils2.default.xor_string(_Utils2.default.b64_to_utf8(_this.sessionXhr.responseText), secretKey);
+										console.log("decrypted", decrypted);
+										result = JSON.parse(decrypted);
+										console.log("result", result);
 
-      var data = {
-        server: _this.currentServer,
-        count: _this.serverList.length,
-        total: _this.serverListCount
-      };
+										return resolve(result);
+									} catch (e) {
+										result = null;
+										return reject(false);
+									}
+								} else {
+									result = null;
+									return reject(false);
+								}
+							}
+						};
+						_this.sessionXhr.send(epost);
+					});
+				});
+			});
+		}
+	}, {
+		key: 'searchNext',
+		value: function searchNext() {
+			var _this = this;
 
-      if (_this.Port) _this.Port.postMessage({ action: "update", data: data });
-    }
-  }, {
-    key: 'resetAll',
-    value: function resetAll(callback) {
-      var _this = this;
+			_Extension2.default.isPermissionValid().then(function (isValid) {
+				if (isValid === false) {
+					chrome.storage.local.remove([_ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK], function () {
+						console.log("Starting next proxy but permission is not valid");
+						_this.resetAll();
+					});
+				} else {
 
-      _ProxyIdentifier2.default.abort();
-      _ProxySetting2.default.clearSettings(callback);
+					if (_this.randomSelectedServer.length > 0) {
 
-      _this.init();
-    }
-  }, {
-    key: 'abortSearch',
-    value: function abortSearch() {
+						_this.currentServer = _this.randomSelectedServer.pop();
+						_this.serverCount = _this.serverCount + 1;
+					} else {
+						if (_this.serverList.length == 0) {
+							return _this.searchFailed();
+						}
+						_this.currentServer = _this.serverList.pop();
+						_this.serverCount = _this.serverCount + 1;
+					}
 
-      var _this = this;
+					_this.updateView();
 
-      _this.abort = true;
-    }
+					_this.testProxy(_this.currentServer, function (isSuccess, identifierDomain) {
 
-    /* Events */
+						if (_this.abort) return _this.resetAll();
 
-  }, {
-    key: 'onPortMessage',
-    value: function onPortMessage(message) {
-      var _this = this;
+						_Feedback2.default.add(_this.currentServer, isSuccess, identifierDomain);
 
-      switch (message.action) {
-        case "search":
-          _this.startSearch(message.data);
-          break;
-        case "cancel":
-          _this.abortSearch();
-          break;
-        case "getUpdate":
-          _this.updateView();
-      }
-    }
-  }, {
-    key: 'onPortDisconnect',
-    value: function onPortDisconnect() {
-      var _this = this;
+						if (isSuccess) return _this.searchSuccess(_this.currentServer);
 
-      _this.Port = false;
-    }
-  }, {
-    key: 'onConnect',
-    value: function onConnect(Port) {
-      var _this = this;
+						if (_this.serverList.length > 0) {
 
-      if (Port.name == "proxysearch-port") _this.connectPort(Port);
-    }
-  }]);
+							// adjust for list with only 3 servers
+							if (!_this.sessionRunning && !_this.sessionFinished && _this.serverList.length === 3) _this.getSessionPage();
 
-  return ProxyFinder;
+							_this.searchNext();
+						} else {
+							if (_this.sessionRunning) {
+								_this.isActive = true;
+							} else {
+								_this.searchFailed(_this.currentServer.Country);
+							}
+						}
+					});
+				}
+			});
+		}
+	}, {
+		key: 'testProxy',
+		value: function testProxy(proxy, callback) {
+			var _this = this;
+
+			if (!proxy) return callback(false);
+
+			_this.generateIdentifier();
+
+			var testPacData = {
+				proxy: proxy,
+				testHost: _this.identifierDomain
+			};
+
+			_Proxy2.default.setTest(testPacData).then(function (test) {
+				console.log("TEST SET", test);
+
+				_ProxyIdentifier2.default.identify(_this.identifierLink, function (isSuccess) {
+
+					callback(isSuccess, _this.identifierDomain);
+				});
+			});
+		}
+	}, {
+		key: 'searchSuccess',
+		value: function searchSuccess(proxy) {
+			var _this = this;
+
+			console.log("**SEARCH SUCCESS**");
+
+			_Extension2.default.isPermissionValid().then(function (isValid) {
+				_this.init();
+				if (isValid === false) {
+					chrome.storage.local.set(_defineProperty({}, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK, false));
+				} else {
+
+					// Setting a working proxy to the browser settings
+					_Proxy2.default.set(proxy).then(function (proxySet) {
+						var _chrome$storage$local4;
+
+						chrome.storage.local.set((_chrome$storage$local4 = {}, _defineProperty(_chrome$storage$local4, _ServiceMeta2.default.STORAGEKEYS.ISPROXYON, true), _defineProperty(_chrome$storage$local4, _ServiceMeta2.default.STORAGEKEYS.CURRENTPROXY, proxy), _defineProperty(_chrome$storage$local4, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK, false), _chrome$storage$local4), function () {
+
+							chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.LOCALE, _ServiceMeta2.default.STORAGEKEYS.COUNTRYLOCALE], function (storage) {
+								var locale = storage[_ServiceMeta2.default.STORAGEKEYS.LOCALE];
+								var countryLocale = storage[_ServiceMeta2.default.STORAGEKEYS.COUNTRYLOCALE];
+								var countryCode = proxy.CountryCode;
+
+								if (locale && locale.ConnectedTo && countryCode) {
+									var countryLabel = countryLocale && countryLocale.hasOwnProperty(countryCode.toUpperCase()) ? countryLocale[countryCode.toUpperCase()] : countryCode;
+									var message = locale.ConnectedTo.replace('{0}', countryLabel);
+									_Utils2.default.showConnectionNotification(locale.ConnectedTitle, message, true);
+								}
+
+								_Management2.default.cacheExtWithProxyPerm();
+
+								console.log("proxyset", proxySet);
+
+								if (_this.Port) _this.Port.postMessage({ action: "success" });
+							});
+						});
+					});
+				}
+			});
+		}
+	}, {
+		key: 'searchFailed',
+		value: function searchFailed(country) {
+			var _chrome$storage$local5;
+
+			var _this = this;
+
+			chrome.storage.local.set((_chrome$storage$local5 = {}, _defineProperty(_chrome$storage$local5, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHFAILED, true), _defineProperty(_chrome$storage$local5, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHFAILEDCOUNTRY, country), _defineProperty(_chrome$storage$local5, _ServiceMeta2.default.STORAGEKEYS.PROXYSEARCHLOCK, true), _chrome$storage$local5), function () {
+
+				console.log("ALL SERVERS FAILED");
+
+				_ProxySetting2.default.clearSettings();
+				_this.init();
+
+				if (_this.Port) _this.Port.postMessage({ action: "failed", data: country });
+			});
+		}
+	}, {
+		key: 'updateView',
+		value: function updateView() {
+			var _this = this;
+
+			var data = {
+				server: _this.currentServer,
+				count: _this.serverCount,
+				total: _this.serverListCount
+			};
+
+			console.log("UPDATING VIEW with data", data);
+
+			if (_this.Port) _this.Port.postMessage({ action: "update", data: data });
+		}
+	}, {
+		key: 'resetAll',
+		value: function resetAll(callback) {
+			var _this = this;
+
+			_ProxyIdentifier2.default.abort();
+			_ProxySetting2.default.clearSettings(callback);
+
+			_this.init();
+		}
+	}, {
+		key: 'abortSearch',
+		value: function abortSearch() {
+
+			var _this = this;
+			console.log("###############ABORT################");
+			_this.sessionIsAbort = true;
+			_this.stopSessionRequest();
+			_this.abort = true;
+		}
+
+		/* Events */
+
+	}, {
+		key: 'onPortMessage',
+		value: function onPortMessage(message) {
+			var _this = this;
+
+			switch (message.action) {
+				case "search":
+					_this.startSearch(message.data);
+					break;
+				case "cancel":
+					_this.abortSearch();
+					break;
+				case "getUpdate":
+					_this.updateView();
+			}
+		}
+	}, {
+		key: 'onPortDisconnect',
+		value: function onPortDisconnect() {
+			var _this = this;
+
+			console.log("ProxyFinder port DISCONNECTED");
+
+			_this.Port = false;
+		}
+	}, {
+		key: 'onConnect',
+		value: function onConnect(Port) {
+			var _this = this;
+
+			if (Port.name == "proxysearch-port") _this.connectPort(Port);
+		}
+	}, {
+		key: 'onSettingsChanged',
+		value: function onSettingsChanged(changes, namespace) {
+			var _this = this;
+			var changedItems = Object.keys(changes);
+
+			if (changedItems.indexOf(_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA) > -1 && changedItems.indexOf(_ServiceMeta2.default.STORAGEKEYS.USERDATA) > -1) {
+				var isUserDeleted = changes[_ServiceMeta2.default.STORAGEKEYS.USERDATA].newValue === undefined ? true : false;
+				var isConfigDeteled = changes[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].newValue === undefined ? true : false;
+
+				if (isUserDeleted && isConfigDeteled) {
+					_this.abortSearch();
+				}
+			}
+		}
+	}]);
+
+	return ProxyFinder;
 }();
 
 exports.default = new ProxyFinder();
 
 /***/ }),
-/* 45 */
+/* 46 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7889,15 +8533,15 @@ var _Utils = __webpack_require__(1);
 
 var _Utils2 = _interopRequireDefault(_Utils);
 
-var _endpoints = __webpack_require__(8);
+var _endpoints = __webpack_require__(9);
 
 var _endpoints2 = _interopRequireDefault(_endpoints);
 
-var _Extension = __webpack_require__(2);
+var _Extension = __webpack_require__(3);
 
 var _Extension2 = _interopRequireDefault(_Extension);
 
-var _Api = __webpack_require__(3);
+var _Api = __webpack_require__(2);
 
 var _Api2 = _interopRequireDefault(_Api);
 
@@ -7914,7 +8558,7 @@ var Feedback = function () {
 		var _this = this;
 		this.currentBatch = {};
 		this.pendingBatches = [];
-		this.sendInterval = 1000 * 60 * 30;
+		this.sendInterval = 1000 * 60 * 1;
 		this.batchInterval = false;
 
 		this.maxQueueSize = 5;
@@ -7977,14 +8621,17 @@ var Feedback = function () {
 
 			if (!chrome.webRequest.onErrorOccurred.hasListener(_this.onErrorOccurred)) {
 				chrome.webRequest.onErrorOccurred.addListener(_this.onErrorOccurred, { urls: ["<all_urls>"] });
+				console.log("Feedback.onErrorOccurred registered");
 			}
 
 			if (!chrome.webRequest.onSendHeaders.hasListener(_this.onSendHeaders)) {
 				chrome.webRequest.onSendHeaders.addListener(_this.onSendHeaders, { urls: ["<all_urls>"] }, ["requestHeaders"]);
+				console.log("Feedback.onSendHeaders registered");
 			}
 
 			if (!chrome.webRequest.onCompleted.hasListener(_this.onCompleted)) {
 				chrome.webRequest.onCompleted.addListener(_this.onCompleted, { urls: ["<all_urls>"] }, ["responseHeaders"]);
+				console.log("Feedback.onCompleted registered");
 			}
 		}
 	}, {
@@ -7992,9 +8639,11 @@ var Feedback = function () {
 		value: function removeListeners() {
 			var _this = this;
 			chrome.webRequest.onErrorOccurred.removeListener(_this.onErrorOccurred);
+			console.log("Feedback.onErrorOccurred removed");
 			chrome.webRequest.onSendHeaders.removeListener(_this.onSendHeaders);
-
+			console.log("Feedback.onSendHeaders removed");
 			chrome.webRequest.onCompleted.removeListener(_this.onCompleted);
+			console.log("Feedback.onCompleted removed");
 		}
 	}, {
 		key: 'onCompleted',
@@ -8064,6 +8713,7 @@ var Feedback = function () {
 				var configData = changes[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].newValue;
 
 				if (configData && configData.hasOwnProperty('speedfeedback')) {
+					console.log("Speedfeedback set to ON");
 
 					_this.speedFeedback.isOn = true;
 
@@ -8073,7 +8723,7 @@ var Feedback = function () {
 						_this.speedFeedback.minSize = _this.DEFAULTSIZE;
 					}
 				} else {
-
+					console.log("Speedfeedback set to OFF");
 					_this.speedFeedback.isOn = false;
 				}
 			}
@@ -8095,7 +8745,7 @@ var Feedback = function () {
 			var _this = this;
 
 			if (details && details.url && details.error && details.url.match(_ServiceMeta2.default.TESTREQUESTREGEX) != null) {
-
+				console.log("MAPPING ERROR", details);
 				_this.mapError(details);
 			}
 		}
@@ -8140,9 +8790,9 @@ var Feedback = function () {
 
 			var batchItem = {
 				id: serverItem['Identifier'],
-				type: serverItem['Type'] ? serverItem['Type'] : "",
+				type: Number.isInteger(serverItem['Type']) ? serverItem['Type'] : "",
 				country: serverItem['CountryCode'],
-				pid: serverItem['PID'] ? serverItem['PID'] : "",
+				pid: serverItem['PID'] ? serverItem['PID'] : "xxx",
 				speed: [],
 				avgsize: []
 			};
@@ -8161,6 +8811,8 @@ var Feedback = function () {
 				_this.speedBatch.current[serverId].speed.push(sVal);
 				_this.speedBatch.current[serverId].avgsize.push(sSize);
 			}
+
+			console.log("_this.speedBatch", _this.speedBatch.current);
 		}
 	}, {
 		key: 'moveCurrentSpeedBatchToPending',
@@ -8256,7 +8908,7 @@ var Feedback = function () {
 
 			var batchItem = {
 				id: serverItem['Identifier'],
-				type: serverItem['Type'] ? serverItem['Type'] : "",
+				type: Number.isInteger(serverItem['Type']) ? serverItem['Type'] : "",
 				country: serverItem['CountryCode'],
 				stats: {
 					s: 0,
@@ -8309,7 +8961,6 @@ var Feedback = function () {
 				v: _this.FEEDBACKVERSION,
 				t: Math.floor(Date.now() / 1000),
 				service: _ServiceMeta2.default.SERVICESHORT.toLowerCase(),
-				login: _this.user,
 				uid: _this.uid
 			};
 
@@ -8358,12 +9009,18 @@ var Feedback = function () {
 				var data = _defineProperty({}, paramKey, batchString);
 
 				_Api2.default.sendFeedback(function (response) {
+					console.log("sendFeedback Response", response);
 
-					if (response && response.Retcode && response.Retcode === 200) {
-
+					if (_Utils2.default.isResponse200(response)) {
+						console.log("Feedback success, send next batch");
 						_this.sendBatch();
-					} else {
+						return;
+					}
+
+					if (response === 0) {
 						_this.pendingBatches.push(batch);
+						console.log("current qeue", _this.pendingBatches);
+						console.log("Feedback failed, push back to qeue");
 					}
 				}, data);
 			});
@@ -8376,7 +9033,7 @@ var Feedback = function () {
 exports.default = new Feedback();
 
 /***/ }),
-/* 46 */
+/* 47 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8396,7 +9053,7 @@ var _ServiceMeta = __webpack_require__(0);
 
 var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
 
-var _TokenWatcher = __webpack_require__(5);
+var _TokenWatcher = __webpack_require__(6);
 
 var _TokenWatcher2 = _interopRequireDefault(_TokenWatcher);
 
@@ -8408,7 +9065,7 @@ var _Utils = __webpack_require__(1);
 
 var _Utils2 = _interopRequireDefault(_Utils);
 
-var _Extension = __webpack_require__(2);
+var _Extension = __webpack_require__(3);
 
 var _Extension2 = _interopRequireDefault(_Extension);
 
@@ -8452,10 +9109,12 @@ var ProxyAuth = function () {
 			if (_ServiceMeta2.default.PLATFORM.toUpperCase() === "FIREFOX") {
 				if (!chrome.webRequest.onAuthRequired.hasListener(_this.onAuthFirefoxHandler)) {
 					chrome.webRequest.onAuthRequired.addListener(_this.onAuthFirefoxHandler, { urls: ["<all_urls>"] }, ["blocking"]);
+					console.log("ProxyAuth.onAuthFirefoxHandler registered");
 				}
 			} else {
 				if (!chrome.webRequest.onAuthRequired.hasListener(_this.onAuthChromeHandler)) {
 					chrome.webRequest.onAuthRequired.addListener(_this.onAuthChromeHandler, { urls: ["<all_urls>"] }, ["asyncBlocking"]);
+					console.log("ProxyAuth.onAuthChromeHandler registered");
 				}
 			}
 		}
@@ -8467,9 +9126,11 @@ var ProxyAuth = function () {
 			if (_ServiceMeta2.default.PLATFORM.toUpperCase() === "FIREFOX") {
 
 				chrome.webRequest.onAuthRequired.removeListener(_this.onAuthFirefoxHandler);
+				console.log("ProxyAuth.onAuthFirefoxHandler removed");
 			} else {
 
 				chrome.webRequest.onAuthRequired.removeListener(_this.onAuthChromeHandler);
+				console.log("ProxyAuth.onAuthChromeHandler removed");
 			}
 		}
 	}, {
@@ -8480,6 +9141,8 @@ var ProxyAuth = function () {
 				callback: callback
 			};
 
+			console.log("WE are using Chrome Handler for Auth", details);
+
 			// onAuth not from proxy
 			if (!details.isProxy) return callback();
 
@@ -8487,6 +9150,7 @@ var ProxyAuth = function () {
 
 				if (!_TokenWatcher2.default.isRunning()) {
 
+					console.log("init round");
 					// set request to work with
 					_TokenWatcher2.default.setRunning();
 
@@ -8552,6 +9216,7 @@ var ProxyAuth = function () {
 		key: 'onAuthFirefoxHandler',
 		value: function onAuthFirefoxHandler(request) {
 
+			console.log("WE are using Firefox Handler for Auth", request);
 			var _this = this;
 
 			if (!request.isProxy) return;
@@ -8674,7 +9339,7 @@ var ProxyAuth = function () {
 exports.default = new ProxyAuth();
 
 /***/ }),
-/* 47 */
+/* 48 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8694,21 +9359,25 @@ var _ServiceMeta = __webpack_require__(0);
 
 var _ServiceMeta2 = _interopRequireDefault(_ServiceMeta);
 
-var _md = __webpack_require__(48);
+var _md = __webpack_require__(49);
 
 var _md2 = _interopRequireDefault(_md);
 
-var _endpoints = __webpack_require__(8);
+var _endpoints = __webpack_require__(9);
 
 var _endpoints2 = _interopRequireDefault(_endpoints);
 
-var _Extension = __webpack_require__(2);
+var _Extension = __webpack_require__(3);
 
 var _Extension2 = _interopRequireDefault(_Extension);
 
 var _Interval = __webpack_require__(12);
 
 var _Interval2 = _interopRequireDefault(_Interval);
+
+var _Api = __webpack_require__(2);
+
+var _Api2 = _interopRequireDefault(_Api);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -8772,6 +9441,7 @@ var AutoProxy = function () {
 
 			if (!chrome.webRequest.onErrorOccurred.hasListener(_this.onRequestError)) {
 				chrome.webRequest.onErrorOccurred.addListener(_this.onRequestError, { urls: ["<all_urls>"] });
+				console.log("AutoProxy.onErrorOccurred registered");
 			}
 		}
 	}, {
@@ -8779,6 +9449,7 @@ var AutoProxy = function () {
 		value: function removeListeners() {
 			var _this = this;
 			chrome.webRequest.onErrorOccurred.removeListener(_this.onRequestError);
+			console.log("AutoProxy.onErrorOccurred removed");
 		}
 	}, {
 		key: 'init',
@@ -8806,7 +9477,7 @@ var AutoProxy = function () {
 
 					if (_this.autoProxy.length > 1000) _this.autoProxy = [];
 					if (!_this.isEntrySizeValid(value.s)) {
-
+						console.log("isEntrySizeValid not valid size = " + value.s);
 						return;
 					}
 					_this.autoProxy.push(value);
@@ -8877,7 +9548,7 @@ var AutoProxy = function () {
 			var _this = this;
 			return new Promise(function (resolve, reject) {
 				_this.getBytesInUse(_ServiceMeta2.default.STORAGEKEYS.RCACHE).then(function (size) {
-
+					console.log("size", size);
 					chrome.storage.local.get(_ServiceMeta2.default.STORAGEKEYS.RCACHE, function (storage) {
 						try {
 
@@ -8953,7 +9624,7 @@ var AutoProxy = function () {
 			return new Promise(function (resolve, reject) {
 				chrome.storage.local.get(_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA, function (storage) {
 
-					if (storage && storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA]) return resolve(storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].usertag);
+					if (storage && storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA]) return resolve(storage[_ServiceMeta2.default.STORAGEKEYS.CONFIGDATA].uid);
 
 					return resolve("");
 				});
@@ -9086,13 +9757,13 @@ var AutoProxy = function () {
 			if (!response) {
 				return false;
 			}
-			if (!response.hasOwnProperty("Saved") || !response.hasOwnProperty("Received") || !response.hasOwnProperty("Retcode")) {
+			if (!response.hasOwnProperty("saved") || !response.hasOwnProperty("received") || !response.hasOwnProperty("retcode")) {
 				return false;
 			}
-			if (response.Retcode !== 200) {
+			if (response.retcode !== 200) {
 				return false;
 			}
-			if (!_Utils2.default.isInt(response.Saved) || !_Utils2.default.isInt(response.Received)) {
+			if (!_Utils2.default.isInt(response.saved) || !_Utils2.default.isInt(response.received)) {
 				return false;
 			}
 			return true;
@@ -9100,9 +9771,9 @@ var AutoProxy = function () {
 	}, {
 		key: 'getAllNotSaved',
 		value: function getAllNotSaved(response, curBatch) {
-			if (response.Saved === response.Received) return [];
-			if (response.Saved < curBatch.length) {
-				var batch = curBatch.slice(response.Saved);
+			if (response.saved === response.received) return [];
+			if (response.saved < curBatch.length) {
+				var batch = curBatch.slice(response.saved);
 				return batch;
 			}
 			return [];
@@ -9132,6 +9803,8 @@ var AutoProxy = function () {
 							_this.sendCache();
 						}
 					} else {
+						if (response && response.retcode === 201) return;
+
 						_this.returnedBatches.push(curBatch);
 						_this.recacheBatches();
 					}
@@ -9190,44 +9863,56 @@ var AutoProxy = function () {
 		value: function verifyProxy(checkData) {
 			var _this = this;
 			return new Promise(function (resolve, reject) {
-
-				chrome.storage.local.get([_ServiceMeta2.default.STORAGEKEYS.BASELINK], function (storage) {
-					try {
-						var baselink = storage[_ServiceMeta2.default.STORAGEKEYS.BASELINK];
-						var autoProxyLink = baselink + _endpoints2.default.AUTOPROXY;
-
-						var xhr = new XMLHttpRequest();
-						xhr.open('POST', autoProxyLink, true);
-
-						var data = encodeURIComponent(JSON.stringify(checkData));
-
-						var params = "batch=" + data;
-						xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-
-						xhr.onreadystatechange = function () {
-							// If the request completed
-							if (xhr.readyState == 4) {
-
-								if (xhr.status == 200) {
-									var result = {};
-									try {
-										result = JSON.parse(xhr.responseText);
-										resolve(result);
-									} catch (e) {
-										resolve(false);
-									}
-								} else {
-									resolve(false);
-								}
-							}
-						};
-
-						// Send the request and set status
-						xhr.send(params);
-					} catch (e) {
-						reject(e);
-					}
-				});
+				try {
+					var data = {
+						batch: JSON.stringify(checkData)
+					};
+					_Api2.default.verifyProxy(function (response) {
+						resolve(response);
+					}, data);
+				} catch (e) {
+					reject(e);
+				}
+				/*
+    			chrome.storage.local.get([ClientMeta.STORAGEKEYS.BASELINK], function (storage) {
+    				try {
+    					var baselink =  storage[ClientMeta.STORAGEKEYS.BASELINK];
+    		      var autoProxyLink = baselink + Endpoints.AUTOPROXY;
+    
+    					var xhr = new XMLHttpRequest();
+    		      xhr.open('POST', autoProxyLink, true);
+    
+    		      var data = encodeURIComponent(JSON.stringify(checkData));
+    
+    		      var params = "batch=" + data;
+    		      xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+    					console.log("batch", checkData);
+    
+    		      xhr.onreadystatechange = function () {
+    		          // If the request completed
+    		          if (xhr.readyState == 4) {
+    
+    		              if (xhr.status == 200) {
+    										var result = {};
+    										try {
+    												result = JSON.parse(xhr.responseText);
+    												resolve(result);
+    										} catch (e) {
+    												resolve(false);
+    										}
+    		              } else {
+    										resolve(false)
+    		              }
+    		          }
+    		      };
+    
+    		      // Send the request and set status
+    		      xhr.send(params);
+    				} catch(e) {
+    					reject(e);
+    				}
+    	    });
+    */
 			});
 		}
 
@@ -9247,7 +9932,7 @@ var AutoProxy = function () {
 exports.default = new AutoProxy();
 
 /***/ }),
-/* 48 */
+/* 49 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9447,7 +10132,7 @@ if (md5('hello') != '5d41402abc4b2a76b9719d911017c592') {
 exports.default = md5;
 
 /***/ }),
-/* 49 */
+/* 50 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9463,7 +10148,7 @@ var _Interval = __webpack_require__(12);
 
 var _Interval2 = _interopRequireDefault(_Interval);
 
-var _Api = __webpack_require__(3);
+var _Api = __webpack_require__(2);
 
 var _Api2 = _interopRequireDefault(_Api);
 
@@ -9505,13 +10190,15 @@ var TierUpdater = function () {
 
       if (chrome.webRequest.onBeforeSendHeaders.hasListener(_this.stripOrigin)) chrome.webRequest.onBeforeSendHeaders.removeListener(_this.stripOrigin);
 
-      chrome.webRequest.onBeforeSendHeaders.addListener(_this.stripOrigin, { urls: ["*://*/*"] }, ["blocking", "requestHeaders"]);
+      console.log("This is chrome setting origin strip listener");
+      chrome.webRequest.onBeforeSendHeaders.addListener(_this.stripOrigin, { urls: ["*://*/*"] }, ["blocking", "requestHeaders", "extraHeaders"]);
     }
   }, {
     key: 'stripOrigin',
     value: function stripOrigin(e) {
       var headers = [];
       var origin = "chrome-extension://" + chrome.runtime.id;
+
       var _iteratorNormalCompletion = true;
       var _didIteratorError = false;
       var _iteratorError = undefined;
@@ -9522,7 +10209,9 @@ var TierUpdater = function () {
 
           if (!(header && header.name && header.name.toLowerCase() === "origin" && header.value && header.value.toLowerCase() === origin)) {
             headers.push(header);
-          } else {}
+          } else {
+            console.log("stripping", e, headers);
+          }
         }
       } catch (err) {
         _didIteratorError = true;
@@ -9549,7 +10238,7 @@ var TierUpdater = function () {
 exports.default = new TierUpdater();
 
 /***/ }),
-/* 50 */
+/* 51 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9565,7 +10254,7 @@ var _Interval = __webpack_require__(12);
 
 var _Interval2 = _interopRequireDefault(_Interval);
 
-var _Api = __webpack_require__(3);
+var _Api = __webpack_require__(2);
 
 var _Api2 = _interopRequireDefault(_Api);
 
